@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.cpp 765 2014-07-11 16:57:13Z serge $
+// $Id: player_sm.cpp 867 2014-07-30 17:49:26Z serge $
 
 #include "player_sm.h"              // self
 
@@ -37,7 +37,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #define MODULENAME      "PlayerSM"
 
-#define PLAY_TIMEOUT    ( 2 * Timeval::MICROS_PER_SECOND )
+#define PLAY_TIMEOUT    ( 2 * sched::Time::MICROS_PER_SECOND )
 
 NAMESPACE_DIALER_START
 
