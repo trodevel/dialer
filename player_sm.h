@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.h 765 2014-07-11 16:57:13Z serge $
+// $Id: player_sm.h 872 2014-07-31 16:50:45Z serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -34,7 +34,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 namespace sched
 {
 class IScheduler;
-class IShotJob;
+class IOneTimeJob;
 }
 
 namespace voip_service
@@ -84,8 +84,8 @@ private:
     voip_service::IVoipService  * voips_;
     sched::IScheduler           * sched_;
 
-    //boost::shared_ptr<sched::IShotJob>     job_;
-    sched::IShotJob             * job_;
+    //boost::shared_ptr<sched::IOneTimeJob>     job_;
+    sched::IOneTimeJob             * job_;
 };
 
 NAMESPACE_DIALER_END

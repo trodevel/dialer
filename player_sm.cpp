@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.cpp 867 2014-07-30 17:49:26Z serge $
+// $Id: player_sm.cpp 872 2014-07-31 16:50:45Z serge $
 
 #include "player_sm.h"              // self
 
@@ -108,9 +108,9 @@ bool PlayerSM::play_file( uint32 call_id, const std::string & filename )
         return false;
     }
 
-//    sched::IShotJob* job = sched::new_timeout_job( sched_, PLAY_TIMEOUT, boost::bind( &PlayerSM::on_play_failed, this, call_id ) );
+//    sched::IOneTimeJob* job = sched::new_timeout_job( sched_, PLAY_TIMEOUT, boost::bind( &PlayerSM::on_play_failed, this, call_id ) );
 //
-//    boost::shared_ptr<sched::IShotJob>     job_p( job );
+//    boost::shared_ptr<sched::IOneTimeJob>     job_p( job );
 
     //job_.reset( job );
 //    job_    = job_p;
