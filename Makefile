@@ -17,12 +17,8 @@ endif
 
 ###################################################################
 
-BOOST_LIB_SYSTEM := libboost-system.a
-BOOST_LIB_THREAD := libboost-thread.a
-
-
-BOOST_INC=$(BOOST_PATH)/include
-BOOST_LIB=$(BOOST_PATH)/lib
+BOOST_INC=$(BOOST_PATH)
+BOOST_LIB=$(BOOST_PATH)/stage/lib
 
 ###################################################################
 
