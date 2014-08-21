@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.cpp 872 2014-07-31 16:50:45Z serge $
+// $Id: player_sm.cpp 848 2014-07-31 16:50:45Z serge $
 
 #include "player_sm.h"              // self
 

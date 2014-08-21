@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 765 2014-07-11 16:57:13Z serge $
+// $Id: dialer.cpp 971 2014-08-20 18:09:32Z serge $
 
 #include "dialer.h"                 // state
 
@@ -110,7 +110,7 @@ boost::shared_ptr< CallI > Dialer::get_call()
 
 bool Dialer::initiate_call( const std::string & party, uint32 & status )
 {
-    dummy_log( 0, MODULENAME, "initiate_call: %s", party.c_str());
+    dummy_log_trace( MODULENAME, "initiate_call: %s", party.c_str());
 
     SCOPE_LOCK( mutex_ );
 
@@ -120,7 +120,7 @@ bool Dialer::initiate_call( const std::string & party, uint32 & status )
     switch( state_ )
     {
     case BUSY:
-        dummy_log( 0, MODULENAME, "initiate_call: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "initiate_call: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return false;
 
     case IDLE:
@@ -129,11 +129,11 @@ bool Dialer::initiate_call( const std::string & party, uint32 & status )
 
         bool b = voips_->initiate_call( party, call_id, status );
 
-        dummy_log( 0, MODULENAME, "initiate_call: call id = %u, status = %u, result = %u", call_id, status, b );
+        dummy_log_debug( MODULENAME, "initiate_call: call id = %u, status = %u, result = %u", call_id, status, b );
 
         if( !b )
         {
-            dummy_log( 0, MODULENAME, "initiate_call: voip service failed" );
+            dummy_log_error( MODULENAME, "initiate_call: voip service failed" );
             return false;
         }
 
@@ -143,7 +143,7 @@ bool Dialer::initiate_call( const std::string & party, uint32 & status )
 
 
     default:
-        dummy_log( 0, MODULENAME, "initiate_call: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "initiate_call: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return false;
     }
 
@@ -167,7 +167,7 @@ bool Dialer::shutdown()
 
 void Dialer::on_ready( uint32 errorcode )
 {
-    dummy_log( 0, MODULENAME, "on_ready: %u", errorcode );
+    dummy_log_trace( MODULENAME, "on_ready: %u", errorcode );
 
     SCOPE_LOCK( mutex_ );
 
@@ -177,23 +177,23 @@ void Dialer::on_ready( uint32 errorcode )
     switch( state_ )
     {
     case UNKNOWN:
-        dummy_log( 0, MODULENAME, "on_ready: switching to IDLE" );
+        dummy_log_debug( MODULENAME, "on_ready: switching to IDLE" );
         state_  = IDLE;
         break;
 
     case IDLE:
     case BUSY:
-        dummy_log( 0, MODULENAME, "on_ready: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_ready: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     default:
-        dummy_log( 0, MODULENAME, "on_ready: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_ready: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 void Dialer::on_error( uint32 call_id, uint32 errorcode )
 {
-    dummy_log( 0, MODULENAME, "on_error: %u", errorcode );
+    dummy_log_trace( MODULENAME, "on_error: %u", errorcode );
 
     SCOPE_LOCK( mutex_ );
 
@@ -203,14 +203,14 @@ void Dialer::on_error( uint32 call_id, uint32 errorcode )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_error: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_error: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_error: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_error: invalid call id %u", call_id );
             return;
         }
 
@@ -221,14 +221,14 @@ void Dialer::on_error( uint32 call_id, uint32 errorcode )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 
 }
 void Dialer::on_dial( uint32 call_id )
 {
-    dummy_log( 0, MODULENAME, "on_dial: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_dial: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -238,14 +238,14 @@ void Dialer::on_dial( uint32 call_id )
     switch( state_ )
     {
     case BUSY:
-        dummy_log( 0, MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case IDLE:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_dial: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_dial: invalid call id %u", call_id );
             return;
         }
 
@@ -253,7 +253,7 @@ void Dialer::on_dial( uint32 call_id )
 
         if( call_->is_active() )
         {
-            dummy_log( 0, MODULENAME, "on_dial: switching to BUSY" );
+            dummy_log_debug( MODULENAME, "on_dial: switching to BUSY" );
             state_ = BUSY;
 
             if( callback_ )
@@ -263,13 +263,13 @@ void Dialer::on_dial( uint32 call_id )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 void Dialer::on_ring( uint32 call_id )
 {
-    dummy_log( 0, MODULENAME, "on_ring: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_ring: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -279,14 +279,14 @@ void Dialer::on_ring( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_ring: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_ring: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_ring: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_ring: invalid call id %u", call_id );
             return;
         }
 
@@ -297,14 +297,14 @@ void Dialer::on_ring( uint32 call_id )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 
 void Dialer::on_connect( uint32 call_id )
 {
-    dummy_log( 0, MODULENAME, "on_connect: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_connect: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -314,14 +314,14 @@ void Dialer::on_connect( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_connect: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_connect: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_connect: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_connect: invalid call id %u", call_id );
             return;
         }
 
@@ -332,14 +332,14 @@ void Dialer::on_connect( uint32 call_id )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 
 void Dialer::on_call_duration( uint32 call_id, uint32 t )
 {
-    dummy_log( 0, MODULENAME, "on_call_duration: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_call_duration: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -349,14 +349,14 @@ void Dialer::on_call_duration( uint32 call_id, uint32 t )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_call_duration: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_call_duration: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_call_duration: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_call_duration: invalid call id %u", call_id );
             return;
         }
 
@@ -365,14 +365,14 @@ void Dialer::on_call_duration( uint32 call_id, uint32 t )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 
 void Dialer::on_play_start( uint32 call_id )
 {
-    dummy_log( 0, MODULENAME, "on_play_start: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_play_start: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -382,14 +382,14 @@ void Dialer::on_play_start( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_play_start: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_play_start: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_play_start: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_play_start: invalid call id %u", call_id );
             return;
         }
 
@@ -400,14 +400,14 @@ void Dialer::on_play_start( uint32 call_id )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
 
 void Dialer::on_play_stop( uint32 call_id )
 {
-    dummy_log( 0, MODULENAME, "on_play_stop: %u", call_id );
+    dummy_log_trace( MODULENAME, "on_play_stop: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -417,14 +417,14 @@ void Dialer::on_play_stop( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_play_stop: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_play_stop: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_play_stop: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_play_stop: invalid call id %u", call_id );
             return;
         }
 
@@ -435,7 +435,7 @@ void Dialer::on_play_stop( uint32 call_id )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
@@ -443,7 +443,7 @@ void Dialer::on_play_stop( uint32 call_id )
 
 void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
 {
-    dummy_log( 0, MODULENAME, "on_call_end: %u %u", call_id, errorcode );
+    dummy_log_trace( MODULENAME, "on_call_end: %u %u", call_id, errorcode );
 
     SCOPE_LOCK( mutex_ );
 
@@ -453,14 +453,14 @@ void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
     switch( state_ )
     {
     case IDLE:
-        dummy_log( 0, MODULENAME, "on_call_end: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "on_call_end: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
     case BUSY:
     {
         if( !is_call_id_valid( call_id ) )
         {
-            dummy_log( 0, MODULENAME, "on_call_end: invalid call id %u", call_id );
+            dummy_log_error( MODULENAME, "on_call_end: invalid call id %u", call_id );
             return;
         }
 
@@ -471,7 +471,7 @@ void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_error( MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 }
@@ -488,7 +488,7 @@ void Dialer::check_call_end( const char * event_name )
 {
     if( call_->is_ended() )
     {
-        dummy_log( 0, MODULENAME, "%s: switching to IDLE", event_name );
+        dummy_log_debug( MODULENAME, "%s: switching to IDLE", event_name );
         state_ = IDLE;
 
         if( callback_ )
