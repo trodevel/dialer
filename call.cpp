@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 742 2014-07-11 16:57:13Z serge $
+// $Id: call.cpp 1067 2014-09-23 16:44:56Z serge $
 
 #include "call.h"                       // self
 
@@ -68,7 +68,9 @@ uint32 Call::get_id() const
 
 bool Call::drop()
 {
-    return true;
+    SCOPE_LOCK( mutex_ );
+
+    return voips_->drop_call( call_id_ );
 }
 
 bool Call::set_input_file( const std::string & filename )
