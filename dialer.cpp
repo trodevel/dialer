@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 971 2014-08-20 18:09:32Z serge $
+// $Id: dialer.cpp 1108 2014-10-08 17:05:55Z serge $
 
 #include "dialer.h"                 // state
 
@@ -110,7 +110,7 @@ boost::shared_ptr< CallI > Dialer::get_call()
 
 bool Dialer::initiate_call( const std::string & party, uint32 & status )
 {
-    dummy_log_trace( MODULENAME, "initiate_call: %s", party.c_str());
+    dummy_log_debug( MODULENAME, "initiate_call: %s", party.c_str());
 
     SCOPE_LOCK( mutex_ );
 
@@ -167,7 +167,7 @@ bool Dialer::shutdown()
 
 void Dialer::on_ready( uint32 errorcode )
 {
-    dummy_log_trace( MODULENAME, "on_ready: %u", errorcode );
+    dummy_log_debug( MODULENAME, "on_ready: %u", errorcode );
 
     SCOPE_LOCK( mutex_ );
 
@@ -193,7 +193,7 @@ void Dialer::on_ready( uint32 errorcode )
 }
 void Dialer::on_error( uint32 call_id, uint32 errorcode )
 {
-    dummy_log_trace( MODULENAME, "on_error: %u", errorcode );
+    dummy_log_debug( MODULENAME, "on_error: %u", errorcode );
 
     SCOPE_LOCK( mutex_ );
 
@@ -228,7 +228,7 @@ void Dialer::on_error( uint32 call_id, uint32 errorcode )
 }
 void Dialer::on_dial( uint32 call_id )
 {
-    dummy_log_trace( MODULENAME, "on_dial: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_dial: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -269,7 +269,7 @@ void Dialer::on_dial( uint32 call_id )
 }
 void Dialer::on_ring( uint32 call_id )
 {
-    dummy_log_trace( MODULENAME, "on_ring: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_ring: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -304,7 +304,7 @@ void Dialer::on_ring( uint32 call_id )
 
 void Dialer::on_connect( uint32 call_id )
 {
-    dummy_log_trace( MODULENAME, "on_connect: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_connect: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -339,7 +339,7 @@ void Dialer::on_connect( uint32 call_id )
 
 void Dialer::on_call_duration( uint32 call_id, uint32 t )
 {
-    dummy_log_trace( MODULENAME, "on_call_duration: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_call_duration: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -372,7 +372,7 @@ void Dialer::on_call_duration( uint32 call_id, uint32 t )
 
 void Dialer::on_play_start( uint32 call_id )
 {
-    dummy_log_trace( MODULENAME, "on_play_start: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_play_start: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -407,7 +407,7 @@ void Dialer::on_play_start( uint32 call_id )
 
 void Dialer::on_play_stop( uint32 call_id )
 {
-    dummy_log_trace( MODULENAME, "on_play_stop: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_play_stop: %u", call_id );
 
     SCOPE_LOCK( mutex_ );
 
@@ -443,7 +443,7 @@ void Dialer::on_play_stop( uint32 call_id )
 
 void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
 {
-    dummy_log_trace( MODULENAME, "on_call_end: %u %u", call_id, errorcode );
+    dummy_log_debug( MODULENAME, "on_call_end: %u %u", call_id, errorcode );
 
     SCOPE_LOCK( mutex_ );
 

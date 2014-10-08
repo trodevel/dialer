@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 1070 2014-09-24 16:18:47Z serge $
+// $Id: call.cpp 1110 2014-10-08 17:20:47Z serge $
 
 #include "call.h"                       // self
 
@@ -215,7 +215,7 @@ void Call::on_error( uint32 errorcode )
     dummy_log_debug( MODULENAME, "on_error: clearing call id %u", call_id_ );
 
     call_id_    = 0;
-    state_      = IDLE;
+    state_      = ENDED;
 
     if( callback_ )
     {

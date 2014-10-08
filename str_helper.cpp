@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.cpp 740 2014-07-11 16:52:14Z serge $
+// $Id: str_helper.cpp 1109 2014-10-08 17:15:29Z serge $
 
 #include "str_helper.h"             // self
 
@@ -27,20 +27,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_DIALER_START
 
-
-#define GLUE( _a, _b )  _a ## _b
-
 #define TUPLE_VAL_STR(_x_)  _x_,#_x_
-#define TUPLE_STR_VAL(_x_)  #_x_,_x_
 
-#define TUPLE_STR_VAL_PREF(_pref,_x_)  #_x_,GLUE(_pref,_x_)
-#define TUPLE_VAL_STR_PREF(_pref,_x_)  GLUE(_pref,_x_),#_x_
-
-#define MAP_INSERT_VS( _m, _val )              _m.insert( Map::value_type( TUPLE_VAL_STR( _val ) ) )
-#define MAP_INSERT_VS_PREF( _m, _pref, _val )  _m.insert( Map::value_type( TUPLE_VAL_STR_PREF( _pref, _val ) ) )
-
-#define MAP_INSERT( _m, _val )              _m.insert( Map::value_type( TUPLE_STR_VAL( _val ) ) )
-#define MAP_INSERT_PREF( _m, _pref, _val )  _m.insert( Map::value_type( TUPLE_STR_VAL_PREF( _pref, _val ) ) )
+#define MAP_INSERT_VAL( _m, _val )      _m.insert( Map::value_type( _val ) )
 
 std::string StrHelper::to_string( const Dialer::state_e & l )
 {
@@ -48,9 +37,9 @@ std::string StrHelper::to_string( const Dialer::state_e & l )
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VS( m, Dialer::UNKNOWN );
-        MAP_INSERT_VS( m, Dialer::IDLE );
-        MAP_INSERT_VS( m, Dialer::BUSY );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( BUSY ) );
     }
 
     if( 0 == m.count( l ) )
@@ -65,11 +54,11 @@ std::string StrHelper::to_string( const Call::state_e & l )
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VS( m, Call::UNKNOWN );
-        MAP_INSERT_VS( m, Call::IDLE );
-        MAP_INSERT_VS( m, Call::DIALLING );
-        MAP_INSERT_VS( m, Call::RINGING );
-        MAP_INSERT_VS( m, Call::CONNECTED );
+        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( DIALLING ) );
+        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( RINGING ) );
+        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( CONNECTED ) );
     }
 
     if( 0 == m.count( l ) )
@@ -84,10 +73,10 @@ std::string StrHelper::to_string( const PlayerSM::state_e & l )
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VS( m, PlayerSM::UNKNOWN );
-        MAP_INSERT_VS( m, PlayerSM::IDLE );
-        MAP_INSERT_VS( m, PlayerSM::WAITING );
-        MAP_INSERT_VS( m, PlayerSM::PLAYING );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAITING ) );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( PLAYING ) );
     }
 
     if( 0 == m.count( l ) )
