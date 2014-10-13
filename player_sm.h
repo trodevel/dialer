@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.h 848 2014-07-31 16:50:45Z serge $
+// $Id: player_sm.h 1143 2014-10-13 17:32:30Z serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -66,6 +66,7 @@ public:
     // IPlayerSM
     bool play_file( uint32 call_id, const std::string & filename );
     void stop();
+    bool is_playing() const;
 
     // IVoipServiceCallback
     void on_play_start( uint32 call_id );

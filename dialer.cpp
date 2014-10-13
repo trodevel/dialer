@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1108 2014-10-08 17:05:55Z serge $
+// $Id: dialer.cpp 1140 2014-10-13 17:19:45Z serge $
 
 #include "dialer.h"                 // state
 
@@ -28,6 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "str_helper.h"                 // StrHelper
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/assert.h"            // ASSERT
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -208,11 +209,7 @@ void Dialer::on_error( uint32 call_id, uint32 errorcode )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_error: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_error( errorcode );
 
@@ -222,6 +219,37 @@ void Dialer::on_error( uint32 call_id, uint32 errorcode )
 
     default:
         dummy_log_error( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        return;
+    }
+
+}
+void Dialer::on_fatal_error( uint32 call_id, uint32 errorcode )
+{
+    dummy_log_debug( MODULENAME, "on_fatal_error: %u", errorcode );
+
+    SCOPE_LOCK( mutex_ );
+
+    if( !is_inited__() )
+        return;
+
+    switch( state_ )
+    {
+    case IDLE:
+        dummy_log_warn( MODULENAME, "on_fatal_error: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        return;
+
+    case BUSY:
+    {
+        ASSERT( is_call_id_valid( call_id ) );
+
+        call_->on_error( errorcode );
+
+        check_call_end( "on_error" );
+    }
+        break;
+
+    default:
+        dummy_log_error( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 
@@ -243,11 +271,7 @@ void Dialer::on_dial( uint32 call_id )
 
     case IDLE:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_dial: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_dial();
 
@@ -284,11 +308,7 @@ void Dialer::on_ring( uint32 call_id )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_ring: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_ring();
 
@@ -319,11 +339,7 @@ void Dialer::on_connect( uint32 call_id )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_connect: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_connect();
 
@@ -354,11 +370,7 @@ void Dialer::on_call_duration( uint32 call_id, uint32 t )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_call_duration: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_call_duration( t );
     }
@@ -387,11 +399,7 @@ void Dialer::on_play_start( uint32 call_id )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_play_start: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_play_start();
 
@@ -422,11 +430,7 @@ void Dialer::on_play_stop( uint32 call_id )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_play_stop: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_play_stop();
 
@@ -458,11 +462,7 @@ void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
 
     case BUSY:
     {
-        if( !is_call_id_valid( call_id ) )
-        {
-            dummy_log_error( MODULENAME, "on_call_end: invalid call id %u", call_id );
-            return;
-        }
+        ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_call_end( errorcode );
 

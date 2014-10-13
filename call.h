@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.h 742 2014-07-11 16:57:13Z serge $
+// $Id: call.h 1139 2014-10-13 17:18:58Z serge $
 
 #ifndef CALL_H
 #define CALL_H
@@ -84,6 +84,7 @@ public:
 
     // forwarded IVoipServiceCallback
     void on_error( uint32 errorcode );
+    void on_fatal_error( uint32 errorcode );
     void on_call_end( uint32 errorcode );
     void on_dial();
     void on_ring();

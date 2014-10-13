@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 742 2014-07-11 16:57:13Z serge $
+// $Id: dialer.h 1137 2014-10-13 17:18:28Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -85,6 +85,7 @@ public:
     // IVoipServiceCallback
     virtual void on_ready( uint32 errorcode );
     virtual void on_error( uint32 call_id, uint32 errorcode );
+    virtual void on_fatal_error( uint32 call_id, uint32 errorcode );
     virtual void on_call_end( uint32 call_id, uint32 errorcode );
     virtual void on_dial( uint32 call_id );
     virtual void on_ring( uint32 call_id );

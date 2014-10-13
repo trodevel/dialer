@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_call_callback.h 742 2014-07-11 16:57:13Z serge $
+// $Id: i_call_callback.h 1138 2014-10-13 17:18:47Z serge $
 
 #ifndef I_CALL_CALLBACK_H
 #define I_CALL_CALLBACK_H
@@ -40,6 +40,7 @@ public:
     virtual ~ICallCallback() {};
 
     virtual void on_error( uint32 errorcode )           = 0;
+    virtual void on_fatal_error( uint32 errorcode )     = 0;
     virtual void on_call_end( uint32 errorcode )        = 0;
     virtual void on_dial()                              = 0;
     virtual void on_ring()                              = 0;

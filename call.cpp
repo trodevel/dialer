@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 1110 2014-10-08 17:20:47Z serge $
+// $Id: call.cpp 1145 2014-10-13 17:41:01Z serge $
 
 #include "call.h"                       // self
 
@@ -210,7 +210,8 @@ void Call::on_error( uint32 errorcode )
         return;
     }
 
-    player_.stop();
+    if( player_.is_playing() )
+        player_.stop();
 
     dummy_log_debug( MODULENAME, "on_error: clearing call id %u", call_id_ );
 
@@ -220,6 +221,42 @@ void Call::on_error( uint32 errorcode )
     if( callback_ )
     {
         proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_error, callback_, errorcode ) ) ) );
+    }
+}
+void Call::on_fatal_error( uint32 errorcode )
+{
+    dummy_log_trace( MODULENAME, "on_fatal_error: %u", errorcode );
+
+    SCOPE_LOCK( mutex_ );
+
+    switch( state_ )
+    {
+    case UNKNOWN:
+    case IDLE:
+    case ENDED:
+        return;
+
+    case DIALLING:
+    case RINGING:
+    case CONNECTED:
+        break;
+
+    default:
+        dummy_log_error( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        return;
+    }
+
+    if( player_.is_playing() )
+        player_.stop();
+
+    dummy_log_debug( MODULENAME, "on_fatal_error: clearing call id %u", call_id_ );
+
+    call_id_    = 0;
+    state_      = ENDED;
+
+    if( callback_ )
+    {
+        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_fatal_error, callback_, errorcode ) ) ) );
     }
 }
 void Call::on_dial()
@@ -436,7 +473,8 @@ void Call::on_call_end( uint32 errorcode )
         return;
 
     case CONNECTED:
-        player_.stop();
+        if( player_.is_playing() )
+            player_.stop();
 
         dummy_log_debug( MODULENAME, "on_call_end: switching to IDLE" );
         state_      = ENDED;
