@@ -19,12 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1140 2014-10-13 17:19:45Z serge $
+// $Id: dialer.cpp 1158 2014-10-16 20:02:39Z serge $
 
 #include "dialer.h"                 // state
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
 #include "../utils/dummy_logger.h"      // dummy_log
+#include "../asyncp/i_async_proxy.h"    // IAsyncProxy
+#include "../asyncp/event.h"            // new_event
 #include "str_helper.h"                 // StrHelper
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
@@ -126,6 +128,13 @@ bool Dialer::initiate_call( const std::string & party, uint32 & status )
 
     case IDLE:
     {
+        state_  = BUSY;
+
+        if( callback_ )
+        {
+            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IDialerCallback::on_busy, callback_ ) ) ) );
+        }
+
         uint32 call_id = 0;
 
         bool b = voips_->initiate_call( party, call_id, status );
@@ -135,10 +144,19 @@ bool Dialer::initiate_call( const std::string & party, uint32 & status )
         if( !b )
         {
             dummy_log_error( MODULENAME, "initiate_call: voip service failed" );
+
+            if( callback_ )
+            {
+                proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IDialerCallback::on_ready, callback_ ) ) ) );
+
+                state_  = IDLE;
+            }
+
             return false;
         }
 
         call_.reset( new Call( call_id, voips_, sched_, proxy_ ) );
+
     }
         return true;
 
@@ -265,24 +283,15 @@ void Dialer::on_dial( uint32 call_id )
 
     switch( state_ )
     {
-    case BUSY:
+    case IDLE:
         dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
 
-    case IDLE:
+    case BUSY:
     {
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_dial();
-
-        if( call_->is_active() )
-        {
-            dummy_log_debug( MODULENAME, "on_dial: switching to BUSY" );
-            state_ = BUSY;
-
-            if( callback_ )
-                callback_->on_busy();
-        }
     }
         break;
 
@@ -492,7 +501,7 @@ void Dialer::check_call_end( const char * event_name )
         state_ = IDLE;
 
         if( callback_ )
-            callback_->on_ready();
+            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IDialerCallback::on_ready, callback_ ) ) ) );
     }
 
 }
