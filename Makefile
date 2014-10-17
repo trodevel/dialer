@@ -78,7 +78,7 @@ EXE=
 
 #vpath %.cpp .
 
-SRCC = dialer.cpp str_helper.cpp player_sm.cpp call.cpp
+SRCC = dialer.cpp dialer_impl.cpp str_helper.cpp player_sm.cpp call.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
 all: static

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.cpp 1109 2014-10-08 17:15:29Z serge $
+// $Id: str_helper.cpp 1166 2014-10-17 18:13:07Z serge $
 
 #include "str_helper.h"             // self
 
@@ -31,15 +31,15 @@ NAMESPACE_DIALER_START
 
 #define MAP_INSERT_VAL( _m, _val )      _m.insert( Map::value_type( _val ) )
 
-std::string StrHelper::to_string( const Dialer::state_e & l )
+std::string StrHelper::to_string( const DialerImpl::state_e & l )
 {
-    typedef std::map< Dialer::state_e, std::string > Map;
+    typedef std::map< DialerImpl::state_e, std::string > Map;
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( UNKNOWN ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( IDLE ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( BUSY ) );
+        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( BUSY ) );
     }
 
     if( 0 == m.count( l ) )

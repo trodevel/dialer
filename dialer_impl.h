@@ -1,6 +1,6 @@
 /*
 
-Dialer.
+DialerImpl.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -19,17 +19,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1165 2014-10-17 18:04:16Z serge $
+// $Id: dialer_impl.h 1168 2014-10-17 18:14:13Z serge $
 
-#ifndef DIALER_H
-#define DIALER_H
+#ifndef DIALER_IMPL_H
+#define DIALER_IMPL_H
 
 #include <string>                   // std::string
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 
 #include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
-#include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
 #include "call.h"                   // Call
@@ -46,60 +45,71 @@ namespace voip_service
 class IVoipService;
 }
 
-namespace asyncp
-{
-class AsyncProxy;
-}
-
 NAMESPACE_DIALER_START
 
-class DialerImpl;
-
-class Dialer: virtual public IDialer, virtual public voip_service::IVoipServiceCallback
+class DialerImpl
 {
 public:
-    Dialer();
-    ~Dialer();
+    enum state_e
+    {
+        UNKNOWN = 0,
+        IDLE,
+        BUSY,
+    };
+
+public:
+    DialerImpl();
+    ~DialerImpl();
 
     bool init(
             voip_service::IVoipService  * voips,
             sched::IScheduler           * sched );
 
-    void thread_func();
-
     bool register_callback( IDialerCallback * callback );
 
     bool is_inited() const;
 
-    //state_e get_state() const;
+    state_e get_state() const;
 
     boost::shared_ptr< CallI > get_call();
 
     // IDialer
-    virtual void initiate_call( const std::string & party );
-    virtual void drop_all_calls();
+    void initiate_call( const std::string & party );
+    void drop_all_calls();
 
-    virtual bool shutdown();
+    bool shutdown();
 
 
     // IVoipServiceCallback
-    virtual void on_ready( uint32 errorcode );
-    virtual void on_error( uint32 call_id, uint32 errorcode );
-    virtual void on_fatal_error( uint32 call_id, uint32 errorcode );
-    virtual void on_call_end( uint32 call_id, uint32 errorcode );
-    virtual void on_dial( uint32 call_id );
-    virtual void on_ring( uint32 call_id );
-    virtual void on_connect( uint32 call_id );
-    virtual void on_call_duration( uint32 call_id, uint32 t );
-    virtual void on_play_start( uint32 call_id );
-    virtual void on_play_stop( uint32 call_id );
+    void on_ready( uint32 errorcode );
+    void on_error( uint32 call_id, uint32 errorcode );
+    void on_fatal_error( uint32 call_id, uint32 errorcode );
+    void on_call_end( uint32 call_id, uint32 errorcode );
+    void on_dial( uint32 call_id );
+    void on_ring( uint32 call_id );
+    void on_connect( uint32 call_id );
+    void on_call_duration( uint32 call_id, uint32 t );
+    void on_play_start( uint32 call_id );
+    void on_play_stop( uint32 call_id );
 
 private:
+    bool is_inited__() const;
+    bool is_call_id_valid( uint32 call_id ) const;
 
-    asyncp::AsyncProxy          * proxy_;
-    DialerImpl                  * impl_;
+    void check_call_end( const char * event_name );
+
+private:
+    mutable boost::mutex        mutex_;
+
+    state_e                     state_;
+
+    voip_service::IVoipService  * voips_;
+    sched::IScheduler           * sched_;
+    IDialerCallback             * callback_;
+
+    boost::shared_ptr< Call >   call_;
 };
 
 NAMESPACE_DIALER_END
 
-#endif  // DIALER_H
+#endif  // DIALER_IMPL_H
