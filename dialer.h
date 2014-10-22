@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1165 2014-10-17 18:04:16Z serge $
+// $Id: dialer.h 1186 2014-10-22 18:15:19Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/types.h"         // uint32
 
 #include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
+#include "../threcon/i_controllable.h"      // IControllable
 #include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
@@ -55,7 +56,7 @@ NAMESPACE_DIALER_START
 
 class DialerImpl;
 
-class Dialer: virtual public IDialer, virtual public voip_service::IVoipServiceCallback
+class Dialer: virtual public IDialer, virtual public voip_service::IVoipServiceCallback, public virtual threcon::IControllable
 {
 public:
     Dialer();
@@ -72,8 +73,6 @@ public:
     bool is_inited() const;
 
     //state_e get_state() const;
-
-    boost::shared_ptr< CallI > get_call();
 
     // IDialer
     virtual void initiate_call( const std::string & party );

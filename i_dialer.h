@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_dialer.h 1163 2014-10-17 18:02:06Z serge $
+// $Id: i_dialer.h 1186 2014-10-22 18:15:19Z serge $
 
 #ifndef I_DIALER_H
 #define I_DIALER_H
@@ -44,7 +44,6 @@ public:
     virtual bool register_callback( IDialerCallback * callback )                                = 0;
     virtual void initiate_call( const std::string & party )                                     = 0;
     virtual void drop_all_calls()                                                               = 0;
-    virtual boost::shared_ptr< CallI > get_call()                                               = 0;
 
     virtual bool shutdown()                                                                     = 0;
 };

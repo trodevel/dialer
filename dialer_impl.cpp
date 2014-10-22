@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1171 2014-10-17 18:18:03Z serge $
+// $Id: dialer_impl.cpp 1186 2014-10-22 18:15:19Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -104,7 +104,7 @@ DialerImpl::state_e DialerImpl::get_state() const
 
 boost::shared_ptr< CallI > DialerImpl::get_call()
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex
 
     return boost::static_pointer_cast< CallI >( call_ );
 }
@@ -123,7 +123,7 @@ void DialerImpl::initiate_call( const std::string & party )
         dummy_log_warn( MODULENAME, "initiate_call: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
 
         if( callback_ )
-            callback_->on_call_initiate_response( false, 0 );
+            callback_->on_call_initiate_response( false, 0, CallIPtr() );
 
         return;
 
@@ -136,17 +136,21 @@ void DialerImpl::initiate_call( const std::string & party )
 
         dummy_log_debug( MODULENAME, "initiate_call: call id = %u, status = %u, result = %u", call_id, status, b );
 
-        if( callback_ )
-            callback_->on_call_initiate_response( b, status );
-
         if( !b )
         {
             dummy_log_error( MODULENAME, "initiate_call: voip service failed" );
+
+            if( callback_ )
+                callback_->on_call_initiate_response( b, status, CallIPtr() );
 
             return;
         }
 
         call_.reset( new Call( call_id, voips_, sched_, nullptr ) );
+
+        if( callback_ )
+            callback_->on_call_initiate_response( b, status, get_call() );
+
 
         if( callback_ )
             callback_->on_busy();
@@ -160,7 +164,7 @@ void DialerImpl::initiate_call( const std::string & party )
         dummy_log_error( MODULENAME, "initiate_call: invalid state %s", StrHelper::to_string( state_ ).c_str() );
 
         if( callback_ )
-            callback_->on_call_initiate_response( false, 0 );
+            callback_->on_call_initiate_response( false, 0, CallIPtr() );
 
         return;
     }

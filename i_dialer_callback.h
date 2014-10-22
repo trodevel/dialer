@@ -19,12 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_dialer_callback.h 1167 2014-10-17 18:13:36Z serge $
+// $Id: i_dialer_callback.h 1186 2014-10-22 18:15:19Z serge $
 
 #ifndef I_DIALER_CALLBACK_H
 #define I_DIALER_CALLBACK_H
 
 #include "../utils/types.h"         // uint32
+
+#include "call_i.h"                 // CallIPtr
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -37,7 +39,7 @@ public:
     virtual ~IDialerCallback() {}
 
     virtual void on_registered( bool b )                            = 0;
-    virtual void on_call_initiate_response( bool is_initiated, uint32 status ) = 0;
+    virtual void on_call_initiate_response( bool is_initiated, uint32 status, CallIPtr call ) = 0;
     virtual void on_ready()                                         = 0;
     virtual void on_busy()                                          = 0;
     virtual void on_error( uint32 errorcode )                       = 0;

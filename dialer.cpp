@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1169 2014-10-17 18:14:40Z serge $
+// $Id: dialer.cpp 1186 2014-10-22 18:15:19Z serge $
 
 #include "dialer.h"                     // self
 
@@ -45,6 +45,7 @@ Dialer::Dialer()
     {
         asyncp::AsyncProxy::Config cfg;
         cfg.sleep_time_ms   = 1;
+        cfg.name            = MODULENAME;
 
         ASSERT( proxy_->init( cfg ) );
     }
@@ -100,11 +101,6 @@ Dialer::state_e Dialer::get_state() const
     return impl_->get_state();
 }
 */
-
-boost::shared_ptr< CallI > Dialer::get_call()
-{
-    return impl_->get_call();
-}
 
 void Dialer::initiate_call( const std::string & party )
 {
