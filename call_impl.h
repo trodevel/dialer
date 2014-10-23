@@ -1,6 +1,6 @@
 /*
 
-Call.
+CallImpl.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -19,23 +19,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.h 1191 2014-10-23 17:44:23Z serge $
+// $Id: call_impl.h 1191 2014-10-23 17:44:23Z serge $
 
-#ifndef CALL_H
-#define CALL_H
+#ifndef CALL_IMPL_H
+#define CALL_IMPL_H
 
 #include <string>                   // std::string
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 
-#include "call_i.h"                 // CallI
+#include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
+#include "player_sm.h"              // PlayerSM
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
-
-namespace asyncp
-{
-class IAsyncProxy;
-}
 
 namespace sched
 {
@@ -49,16 +45,28 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
-class CallImpl;
-
-class Call: virtual public CallI
+class CallImpl
 {
 public:
-    Call( uint32                        call_id,
+    enum state_e
+    {
+        UNKNOWN = 0,
+        IDLE,
+        DIALLING,
+        RINGING,
+        CONNECTED,
+        ENDED
+    };
+
+public:
+    CallImpl(
+          uint32                        call_id,
           voip_service::IVoipService    * voips,
-          sched::IScheduler             * sched,
-          asyncp::IAsyncProxy           * proxy );
-    ~Call();
+          sched::IScheduler             * sched );
+    ~CallImpl();
+
+//    state_e get_state() const;
+//    uint32 get_id() const;
 
     // CallI
     bool drop();
@@ -84,12 +92,19 @@ private:
 private:
     mutable boost::mutex        mutex_;
 
-    asyncp::IAsyncProxy         * proxy_;
+    state_e                     state_;
 
-    CallImpl                    * impl_;
+    voip_service::IVoipService  * voips_;
+    sched::IScheduler           * sched_;
+
+    uint32                      call_id_;
+
+    PlayerSM                    player_;
+
+    ICallCallbackPtr            callback_;
 
 };
 
 NAMESPACE_DIALER_END
 
-#endif  // CALL_H
+#endif  // CALL_IMPL_H

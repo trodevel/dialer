@@ -1,6 +1,6 @@
 /*
 
-Call.
+CallImpl.
 
 Copyright (C) 2014 Sergey Kolevatov
 
@@ -19,9 +19,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 1191 2014-10-23 17:44:23Z serge $
+// $Id: call_impl.cpp 1191 2014-10-23 17:44:23Z serge $
 
-#include "call.h"                       // self
+#include "call_impl.h"                  // self
 
 #include <boost/bind.hpp>               // boost::bind
 
@@ -36,32 +36,38 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "namespace_lib.h"              // NAMESPACE_DIALER_START
 
-#define MODULENAME      "Call"
+#define MODULENAME      "CallImpl"
 
 NAMESPACE_DIALER_START
 
-Call::Call(
+CallImpl::CallImpl(
         uint32                        call_id,
         voip_service::IVoipService    * voips,
-        sched::IScheduler             * sched,
-        asyncp::IAsyncProxy           * proxy ):
-    proxy_( proxy )
+        sched::IScheduler             * sched ):
+    state_( IDLE ), voips_( voips ), sched_( sched ), call_id_( call_id ), callback_( 0L )
 {
-    impl_   = new CallImpl( call_id, voips, sched );
-
-    ASSERT( proxy );
+    player_.init( voips, sched );
 }
 
-Call::~Call()
+CallImpl::~CallImpl()
 {
-    if( impl_ )
-    {
-        delete impl_;
-        impl_   = nullptr;
-    }
 }
 
-bool Call::drop()
+//CallImpl::state_e CallImpl::get_state() const
+//{
+//    SCOPE_LOCK( mutex_ );
+//
+//    return state_;
+//}
+
+//uint32 CallImpl::get_id() const
+//{
+//    SCOPE_LOCK( mutex_ );
+//
+//    return call_id_;
+//}
+
+bool CallImpl::drop()
 {
     SCOPE_LOCK( mutex_ );
 
@@ -86,7 +92,7 @@ bool Call::drop()
     return voips_->drop_call( call_id_ );
 }
 
-bool Call::set_input_file( const std::string & filename )
+bool CallImpl::set_input_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -118,7 +124,7 @@ bool Call::set_input_file( const std::string & filename )
 
     return true;
 }
-bool Call::set_output_file( const std::string & filename )
+bool CallImpl::set_output_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -151,21 +157,21 @@ bool Call::set_output_file( const std::string & filename )
     return true;
 }
 
-bool Call::is_ended() const
+bool CallImpl::is_ended() const
 {
     SCOPE_LOCK( mutex_ );
 
     return state_ == ENDED;
 }
 
-bool Call::is_active() const
+bool CallImpl::is_active() const
 {
     SCOPE_LOCK( mutex_ );
 
     return state_ == DIALLING || state_ == RINGING || state_ == CONNECTED;
 }
 
-bool Call::register_callback( ICallCallbackPtr callback )
+bool CallImpl::register_callback( ICallCallbackPtr callback )
 {
     if( callback == 0L )
         return false;
@@ -182,7 +188,7 @@ bool Call::register_callback( ICallCallbackPtr callback )
     return true;
 }
 
-void Call::on_error( uint32 errorcode )
+void CallImpl::on_error( uint32 errorcode )
 {
     dummy_log_trace( MODULENAME, "on_error: %u", errorcode );
 
@@ -215,10 +221,10 @@ void Call::on_error( uint32 errorcode )
 
     if( callback_ )
     {
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_error, callback_, errorcode ) ) ) );
+        callback_->on_error( errorcode );
     }
 }
-void Call::on_fatal_error( uint32 errorcode )
+void CallImpl::on_fatal_error( uint32 errorcode )
 {
     dummy_log_trace( MODULENAME, "on_fatal_error: %u", errorcode );
 
@@ -251,10 +257,10 @@ void Call::on_fatal_error( uint32 errorcode )
 
     if( callback_ )
     {
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_fatal_error, callback_, errorcode ) ) ) );
+        callback_->on_fatal_error( errorcode );
     }
 }
-void Call::on_dial()
+void CallImpl::on_dial()
 {
     dummy_log_trace( MODULENAME, "on_dial:" );
 
@@ -276,7 +282,7 @@ void Call::on_dial()
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_dial, callback_ ) ) ) );
+            callback_->on_dial()
         }
 
         break;
@@ -286,7 +292,7 @@ void Call::on_dial()
         return;
     }
 }
-void Call::on_ring()
+void CallImpl::on_ring()
 {
     dummy_log_trace( MODULENAME, "on_ring:");
 
@@ -308,7 +314,7 @@ void Call::on_ring()
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_ring, callback_ ) ) ) );
+            callback_->on_ring();
         }
 
         break;
@@ -319,7 +325,7 @@ void Call::on_ring()
     }
 }
 
-void Call::on_connect()
+void CallImpl::on_connect()
 {
     dummy_log_trace( MODULENAME, "on_connect:" );
 
@@ -340,7 +346,7 @@ void Call::on_connect()
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_connect, callback_ ) ) ) );
+            callback_->on_connect();
         }
 
         break;
@@ -352,7 +358,7 @@ void Call::on_connect()
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_connect, callback_ ) ) ) );
+            callback_->on_connect();
         }
 
         break;
@@ -363,7 +369,7 @@ void Call::on_connect()
     }
 }
 
-void Call::on_call_duration( uint32 t )
+void CallImpl::on_call_duration( uint32 t )
 {
     dummy_log_trace( MODULENAME, "on_call_duration:" );
 
@@ -383,7 +389,7 @@ void Call::on_call_duration( uint32 t )
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_call_duration, callback_, t ) ) ) );
+            callback_->on_call_duration( t );
         }
 
         break;
@@ -394,7 +400,7 @@ void Call::on_call_duration( uint32 t )
     }
 }
 
-void Call::on_play_start()
+void CallImpl::on_play_start()
 {
     dummy_log_trace( MODULENAME, "on_play_start:");
 
@@ -422,7 +428,7 @@ void Call::on_play_start()
     player_.on_play_start( call_id_ );
 }
 
-void Call::on_play_stop()
+void CallImpl::on_play_stop()
 {
     dummy_log_trace( MODULENAME, "on_play_stop:");
 
@@ -451,7 +457,7 @@ void Call::on_play_stop()
 }
 
 
-void Call::on_call_end( uint32 errorcode )
+void CallImpl::on_call_end( uint32 errorcode )
 {
     dummy_log_trace( MODULENAME, "on_call_end: %u", errorcode );
 
@@ -477,7 +483,7 @@ void Call::on_call_end( uint32 errorcode )
 
         if( callback_ )
         {
-            proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &ICallCallback::on_call_end, callback_, errorcode ) ) ) );
+            callback_->on_call_end( errorcode );
         }
 
         break;

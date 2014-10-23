@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1186 2014-10-22 18:15:19Z serge $
+// $Id: dialer.cpp 1189 2014-10-23 17:27:31Z serge $
 
 #include "dialer.h"                     // self
 
@@ -73,7 +73,7 @@ bool Dialer::init(
         voip_service::IVoipService  * voips,
         sched::IScheduler           * sched )
 {
-    return impl_->init( voips, sched );
+    return impl_->init( voips, sched, proxy_ );
 }
 
 void Dialer::thread_func()

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1186 2014-10-22 18:15:19Z serge $
+// $Id: dialer_impl.h 1189 2014-10-23 17:27:31Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -63,7 +63,8 @@ public:
 
     bool init(
             voip_service::IVoipService  * voips,
-            sched::IScheduler           * sched );
+            sched::IScheduler           * sched,
+            asyncp::IAsyncProxy         * proxy );
 
     bool register_callback( IDialerCallback * callback );
 
@@ -106,6 +107,7 @@ private:
     voip_service::IVoipService  * voips_;
     sched::IScheduler           * sched_;
     IDialerCallback             * callback_;
+    asyncp::IAsyncProxy         * proxy_;
 
     boost::shared_ptr< Call >   call_;
 };

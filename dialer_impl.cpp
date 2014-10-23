@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1186 2014-10-22 18:15:19Z serge $
+// $Id: dialer_impl.cpp 1189 2014-10-23 17:27:31Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -49,15 +49,17 @@ DialerImpl::~DialerImpl()
 
 bool DialerImpl::init(
         voip_service::IVoipService  * voips,
-        sched::IScheduler           * sched )
+        sched::IScheduler           * sched,
+        asyncp::IAsyncProxy         * proxy )
 {
 	SCOPE_LOCK( mutex_ );
 
-    if( !voips || !sched )
+    if( !voips || !sched || !proxy )
         return false;
 
     voips_      = voips;
     sched_      = sched;
+    proxy_      = proxy;
     //state_  = IDLE;
 
     return true;
@@ -146,7 +148,7 @@ void DialerImpl::initiate_call( const std::string & party )
             return;
         }
 
-        call_.reset( new Call( call_id, voips_, sched_, nullptr ) );
+        call_.reset( new Call( call_id, voips_, sched_, proxy_ ) );
 
         if( callback_ )
             callback_->on_call_initiate_response( b, status, get_call() );
