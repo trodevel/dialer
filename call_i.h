@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_i.h 742 2014-07-11 16:57:13Z serge $
+// $Id: call_i.h 1193 2014-10-24 18:17:16Z serge $
 
 #ifndef CALL_I_H
 #define CALL_I_H
@@ -41,9 +41,9 @@ public:
 public:
     virtual ~CallI() {};
 
-    virtual bool drop()                                                                         = 0;
-    virtual bool set_input_file( const std::string & filename )                                 = 0;
-    virtual bool set_output_file( const std::string & filename )                                = 0;
+    virtual void drop()                                                                         = 0;
+    virtual void set_input_file( const std::string & filename )                                 = 0;
+    virtual void set_output_file( const std::string & filename )                                = 0;
     virtual bool is_ended() const                                                               = 0;
     virtual bool is_active() const                                                              = 0;
     virtual bool register_callback( ICallCallbackPtr callback )                                 = 0;

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.cpp 1166 2014-10-17 18:13:07Z serge $
+// $Id: str_helper.cpp 1193 2014-10-24 18:17:16Z serge $
 
 #include "str_helper.h"             // self
 
@@ -48,17 +48,17 @@ std::string StrHelper::to_string( const DialerImpl::state_e & l )
     return m[l];
 }
 
-std::string StrHelper::to_string( const Call::state_e & l )
+std::string StrHelper::to_string( const CallImpl::state_e & l )
 {
-    typedef std::map< Call::state_e, std::string > Map;
+    typedef std::map< CallImpl::state_e, std::string > Map;
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( UNKNOWN ) );
-        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( IDLE ) );
-        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( DIALLING ) );
-        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( RINGING ) );
-        MAP_INSERT_VAL( m, Call:: TUPLE_VAL_STR( CONNECTED ) );
+        MAP_INSERT_VAL( m, CallImpl:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, CallImpl:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, CallImpl:: TUPLE_VAL_STR( DIALLING ) );
+        MAP_INSERT_VAL( m, CallImpl:: TUPLE_VAL_STR( RINGING ) );
+        MAP_INSERT_VAL( m, CallImpl:: TUPLE_VAL_STR( CONNECTED ) );
     }
 
     if( 0 == m.count( l ) )

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1189 2014-10-23 17:27:31Z serge $
+// $Id: dialer.cpp 1199 2014-10-24 19:03:08Z serge $
 
 #include "dialer.h"                     // self
 
@@ -50,6 +50,16 @@ Dialer::Dialer()
         ASSERT( proxy_->init( cfg ) );
     }
 
+    proxy_call_  = new asyncp::AsyncProxy;
+
+    {
+        asyncp::AsyncProxy::Config cfg;
+        cfg.sleep_time_ms   = 1;
+        cfg.name            = MODULENAME "-Call";
+
+        ASSERT( proxy_call_->init( cfg ) );
+    }
+
     impl_   = new DialerImpl;
 
 }
@@ -60,6 +70,12 @@ Dialer::~Dialer()
     {
         delete proxy_;
         proxy_  = nullptr;
+    }
+
+    if( proxy_call_ )
+    {
+        delete proxy_call_;
+        proxy_call_  = nullptr;
     }
 
     if( impl_ )
@@ -73,14 +89,20 @@ bool Dialer::init(
         voip_service::IVoipService  * voips,
         sched::IScheduler           * sched )
 {
-    return impl_->init( voips, sched, proxy_ );
+    return impl_->init( voips, sched, proxy_call_ );
 }
 
 void Dialer::thread_func()
 {
     dummy_log_debug( MODULENAME, "thread_func: started" );
 
-    proxy_->thread_func();
+    boost::thread_group tg;
+
+    tg.create_thread( boost::bind( &asyncp::AsyncProxy::thread_func, proxy_ ) );
+    tg.create_thread( boost::bind( &asyncp::AsyncProxy::thread_func, proxy_call_ ) );
+
+    tg.join_all();
+
 
     dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
@@ -115,7 +137,10 @@ bool Dialer::shutdown()
 {
     proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::shutdown, impl_ ) ) ) );
 
-    return proxy_->shutdown();
+    bool b1 = proxy_->shutdown();
+    bool b2 = proxy_call_->shutdown();
+
+    return b1 && b2;
 }
 
 void Dialer::on_ready( uint32 errorcode )

@@ -19,24 +19,20 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.cpp 1191 2014-10-23 17:44:23Z serge $
+// $Id: call_impl.cpp 1197 2014-10-24 19:01:16Z serge $
 
 #include "call_impl.h"                  // self
-
-#include <boost/bind.hpp>               // boost::bind
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
-#include "i_call_callback.h"            // ICallCallback
 
-#include "../asyncp/event.h"            // utils::new_event
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 
 #include "namespace_lib.h"              // NAMESPACE_DIALER_START
 
-#define MODULENAME      "CallImpl"
+#define MODULENAME      "Call"
 
 NAMESPACE_DIALER_START
 
@@ -60,12 +56,12 @@ CallImpl::~CallImpl()
 //    return state_;
 //}
 
-//uint32 CallImpl::get_id() const
-//{
-//    SCOPE_LOCK( mutex_ );
-//
-//    return call_id_;
-//}
+uint32 CallImpl::get_id() const
+{
+    SCOPE_LOCK( mutex_ );
+
+    return call_id_;
+}
 
 bool CallImpl::drop()
 {
@@ -282,7 +278,7 @@ void CallImpl::on_dial()
 
         if( callback_ )
         {
-            callback_->on_dial()
+            callback_->on_dial();
         }
 
         break;

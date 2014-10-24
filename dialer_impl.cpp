@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1189 2014-10-23 17:27:31Z serge $
+// $Id: dialer_impl.cpp 1207 2014-10-24 20:25:55Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -34,12 +34,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
-#define MODULENAME      "DialerImpl"
+#define MODULENAME      "Dialer"
 
 NAMESPACE_DIALER_START
 
 DialerImpl::DialerImpl():
-    state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( 0L )
+    state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( 0L ), proxy_( nullptr ), call_id_( 0 )
 {
 }
 
@@ -149,13 +149,14 @@ void DialerImpl::initiate_call( const std::string & party )
         }
 
         call_.reset( new Call( call_id, voips_, sched_, proxy_ ) );
+        call_id_    = call_id;
 
         if( callback_ )
             callback_->on_call_initiate_response( b, status, get_call() );
 
 
-        if( callback_ )
-            callback_->on_busy();
+//        if( callback_ )
+//            callback_->on_busy();
 
         state_  = BUSY;
     }
@@ -199,7 +200,8 @@ void DialerImpl::on_ready( uint32 errorcode )
     {
     case UNKNOWN:
         dummy_log_debug( MODULENAME, "on_ready: switching to IDLE" );
-        state_  = IDLE;
+        state_      = IDLE;
+        call_id_    = 0;
         break;
 
     case IDLE:
@@ -492,7 +494,7 @@ bool DialerImpl::is_call_id_valid( uint32 call_id ) const
     if( call_ == 0L )
         return false;
 
-    return call_id == call_->get_id();
+    return call_id == call_id_;
 }
 
 void DialerImpl::check_call_end( const char * event_name )
@@ -500,7 +502,8 @@ void DialerImpl::check_call_end( const char * event_name )
     if( call_->is_ended() )
     {
         dummy_log_debug( MODULENAME, "%s: switching to IDLE", event_name );
-        state_ = IDLE;
+        state_      = IDLE;
+        call_id_    = 0;
 
         if( callback_ )
             callback_->on_ready();

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1186 2014-10-22 18:15:19Z serge $
+// $Id: dialer.h 1199 2014-10-24 19:03:08Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -96,6 +96,7 @@ public:
 private:
 
     asyncp::AsyncProxy          * proxy_;
+    asyncp::AsyncProxy          * proxy_call_;
     DialerImpl                  * impl_;
 };
 

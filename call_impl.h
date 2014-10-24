@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.h 1191 2014-10-23 17:44:23Z serge $
+// $Id: call_impl.h 1192 2014-10-24 18:15:57Z serge $
 
 #ifndef CALL_IMPL_H
 #define CALL_IMPL_H
@@ -28,7 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 
-#include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
+#include "i_call_callback.h"        // ICallCallbackPtr
 #include "player_sm.h"              // PlayerSM
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
@@ -66,7 +66,7 @@ public:
     ~CallImpl();
 
 //    state_e get_state() const;
-//    uint32 get_id() const;
+    uint32 get_id() const;
 
     // CallI
     bool drop();

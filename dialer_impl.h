@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1189 2014-10-23 17:27:31Z serge $
+// $Id: dialer_impl.h 1198 2014-10-24 19:02:30Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -110,6 +110,7 @@ private:
     asyncp::IAsyncProxy         * proxy_;
 
     boost::shared_ptr< Call >   call_;
+    uint32                      call_id_;
 };
 
 NAMESPACE_DIALER_END
