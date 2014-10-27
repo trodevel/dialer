@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.cpp 1197 2014-10-24 19:01:16Z serge $
+// $Id: call_impl.cpp 1212 2014-10-27 17:27:10Z serge $
 
 #include "call_impl.h"                  // self
 
@@ -63,7 +63,7 @@ uint32 CallImpl::get_id() const
     return call_id_;
 }
 
-bool CallImpl::drop()
+void CallImpl::drop()
 {
     SCOPE_LOCK( mutex_ );
 
@@ -74,21 +74,23 @@ bool CallImpl::drop()
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "drop: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         break;
 
     default:
-        dummy_log_error( MODULENAME, "drop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "drop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
-    return voips_->drop_call( call_id_ );
+    voips_->drop_call( call_id_ );
 }
 
-bool CallImpl::set_input_file( const std::string & filename )
+void CallImpl::set_input_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -99,15 +101,17 @@ bool CallImpl::set_input_file( const std::string & filename )
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "set_input_file: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "set_input_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         break;
 
     default:
-        dummy_log_error( MODULENAME, "set_input_file: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "set_input_file: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     bool b = player_.play_file( call_id_, filename );
@@ -115,12 +119,9 @@ bool CallImpl::set_input_file( const std::string & filename )
     if( !b )
     {
         dummy_log_error( MODULENAME, "set_input_file: player failed" );
-        return false;
     }
-
-    return true;
 }
-bool CallImpl::set_output_file( const std::string & filename )
+void CallImpl::set_output_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -131,15 +132,17 @@ bool CallImpl::set_output_file( const std::string & filename )
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "set_output_file: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "set_output_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         break;
 
     default:
-        dummy_log_error( MODULENAME, "set_output_file: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return false;
+        dummy_log_fatal( MODULENAME, "set_output_file: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     bool b = voips_->set_output_file( call_id_, filename );
@@ -147,10 +150,7 @@ bool CallImpl::set_output_file( const std::string & filename )
     if( !b )
     {
         dummy_log_error( MODULENAME, "set_output_file: voip service failed" );
-        return false;
     }
-
-    return true;
 }
 
 bool CallImpl::is_ended() const
@@ -203,8 +203,9 @@ void CallImpl::on_error( uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     if( player_.is_playing() )
@@ -239,8 +240,9 @@ void CallImpl::on_fatal_error( uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     if( player_.is_playing() )
@@ -269,8 +271,9 @@ void CallImpl::on_dial()
     case RINGING:
     case CONNECTED:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case IDLE:
         dummy_log_debug( MODULENAME, "on_dial: switching to DIALLING" );
@@ -284,8 +287,9 @@ void CallImpl::on_dial()
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 }
 void CallImpl::on_ring()
@@ -301,8 +305,9 @@ void CallImpl::on_ring()
     case RINGING:
     case CONNECTED:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_ring: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case DIALLING:
         dummy_log_debug( MODULENAME, "on_ring: switching to RINGING" );
@@ -316,8 +321,9 @@ void CallImpl::on_ring()
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 }
 
@@ -333,8 +339,9 @@ void CallImpl::on_connect()
     case IDLE:
     case CONNECTED:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_connect: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_connect: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case DIALLING:
         dummy_log_debug( MODULENAME, "on_connect: switching to CONNECTED ***** valid for PSTN calls *****" );
@@ -360,8 +367,9 @@ void CallImpl::on_connect()
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 }
 
@@ -378,8 +386,9 @@ void CallImpl::on_call_duration( uint32 t )
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_call_duration: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_duration: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
 
@@ -391,8 +400,9 @@ void CallImpl::on_call_duration( uint32 t )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 }
 
@@ -409,16 +419,18 @@ void CallImpl::on_play_start()
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_play_start: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         dummy_log_debug( MODULENAME, "on_play_start: ok" );
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     player_.on_play_start( call_id_ );
@@ -437,16 +449,18 @@ void CallImpl::on_play_stop()
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_play_stop: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         dummy_log_debug( MODULENAME, "on_play_stop: ok" );
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 
     player_.on_play_stop( call_id_ );
@@ -466,8 +480,9 @@ void CallImpl::on_call_end( uint32 errorcode )
     case DIALLING:
     case RINGING:
     case ENDED:
-        dummy_log_warn( MODULENAME, "on_call_end: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
 
     case CONNECTED:
         if( player_.is_playing() )
@@ -485,8 +500,9 @@ void CallImpl::on_call_end( uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
     }
 }
 

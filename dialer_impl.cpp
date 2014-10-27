@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1207 2014-10-24 20:25:55Z serge $
+// $Id: dialer_impl.cpp 1210 2014-10-27 17:02:24Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -155,21 +155,15 @@ void DialerImpl::initiate_call( const std::string & party )
             callback_->on_call_initiate_response( b, status, get_call() );
 
 
-//        if( callback_ )
-//            callback_->on_busy();
-
         state_  = BUSY;
     }
         return;
 
 
     default:
-        dummy_log_error( MODULENAME, "initiate_call: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "initiate_call: invalid state %s", StrHelper::to_string( state_ ).c_str() );
 
-        if( callback_ )
-            callback_->on_call_initiate_response( false, 0, CallIPtr() );
-
-        return;
+        ASSERT( 0 );
     }
 }
 void DialerImpl::drop_all_calls()
@@ -210,8 +204,9 @@ void DialerImpl::on_ready( uint32 errorcode )
         return;
 
     default:
-        dummy_log_error( MODULENAME, "on_ready: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_ready: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 void DialerImpl::on_error( uint32 call_id, uint32 errorcode )
@@ -240,8 +235,9 @@ void DialerImpl::on_error( uint32 call_id, uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 
 }
@@ -271,8 +267,9 @@ void DialerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_fatal_error: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 
 }
@@ -288,8 +285,11 @@ void DialerImpl::on_dial( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -300,8 +300,9 @@ void DialerImpl::on_dial( uint32 call_id )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_dial: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 void DialerImpl::on_ring( uint32 call_id )
@@ -330,8 +331,9 @@ void DialerImpl::on_ring( uint32 call_id )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_ring: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 
@@ -347,8 +349,11 @@ void DialerImpl::on_connect( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_connect: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_connect: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -361,8 +366,9 @@ void DialerImpl::on_connect( uint32 call_id )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_connect: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 
@@ -378,8 +384,11 @@ void DialerImpl::on_call_duration( uint32 call_id, uint32 t )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_call_duration: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_duration: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -390,8 +399,9 @@ void DialerImpl::on_call_duration( uint32 call_id, uint32 t )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_duration: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 
@@ -407,8 +417,11 @@ void DialerImpl::on_play_start( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_play_start: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -421,8 +434,9 @@ void DialerImpl::on_play_start( uint32 call_id )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_start: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 
@@ -438,8 +452,11 @@ void DialerImpl::on_play_stop( uint32 call_id )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_play_stop: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -452,8 +469,9 @@ void DialerImpl::on_play_stop( uint32 call_id )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_play_stop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 
@@ -470,8 +488,11 @@ void DialerImpl::on_call_end( uint32 call_id, uint32 errorcode )
     switch( state_ )
     {
     case IDLE:
-        dummy_log_warn( MODULENAME, "on_call_end: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_warn( MODULENAME, "on_call_end: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+
+        break;
 
     case BUSY:
     {
@@ -484,8 +505,9 @@ void DialerImpl::on_call_end( uint32 call_id, uint32 errorcode )
         break;
 
     default:
-        dummy_log_error( MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        dummy_log_fatal( MODULENAME, "on_call_end: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
     }
 }
 

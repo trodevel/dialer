@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.h 1192 2014-10-24 18:15:57Z serge $
+// $Id: call_impl.h 1212 2014-10-27 17:27:10Z serge $
 
 #ifndef CALL_IMPL_H
 #define CALL_IMPL_H
@@ -69,9 +69,9 @@ public:
     uint32 get_id() const;
 
     // CallI
-    bool drop();
-    bool set_input_file( const std::string & filename );
-    bool set_output_file( const std::string & filename );
+    void drop();
+    void set_input_file( const std::string & filename );
+    void set_output_file( const std::string & filename );
     bool is_ended() const;
     bool is_active() const;
     bool register_callback( ICallCallbackPtr callback );
