@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.cpp 1212 2014-10-27 17:27:10Z serge $
+// $Id: call_impl.cpp 1213 2014-10-28 16:50:51Z serge $
 
 #include "call_impl.h"                  // self
 
@@ -267,12 +267,15 @@ void CallImpl::on_dial()
     switch( state_ )
     {
     case UNKNOWN:
-    case DIALLING:
     case RINGING:
     case CONNECTED:
     case ENDED:
         dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
+        break;
+
+    case DIALLING:
+        dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         break;
 
     case IDLE:

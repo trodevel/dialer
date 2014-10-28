@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_dialer_callback.h 1208 2014-10-27 16:51:29Z serge $
+// $Id: i_dialer_callback.h 1216 2014-10-28 18:04:01Z serge $
 
 #ifndef I_DIALER_CALLBACK_H
 #define I_DIALER_CALLBACK_H
@@ -40,6 +40,7 @@ public:
 
     virtual void on_registered( bool b )                            = 0;
     virtual void on_call_initiate_response( bool is_initiated, uint32 status, CallIPtr call ) = 0;
+    virtual void on_call_started()                                  = 0;
     virtual void on_ready()                                         = 0;
     virtual void on_error( uint32 errorcode )                       = 0;
 };

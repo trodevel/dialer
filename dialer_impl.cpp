@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1210 2014-10-27 17:02:24Z serge $
+// $Id: dialer_impl.cpp 1216 2014-10-28 18:04:01Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -360,6 +360,9 @@ void DialerImpl::on_connect( uint32 call_id )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_connect();
+
+        if( callback_ )
+            callback_->on_call_started();
 
         check_call_end( "on_connect" );
     }
