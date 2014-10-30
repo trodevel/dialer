@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1199 2014-10-24 19:03:08Z serge $
+// $Id: dialer.h 1227 2014-10-29 23:35:05Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -73,6 +73,8 @@ public:
     bool is_inited() const;
 
     //state_e get_state() const;
+
+    void on_call_ended();
 
     // IDialer
     virtual void initiate_call( const std::string & party );

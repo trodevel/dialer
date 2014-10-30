@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.h 1212 2014-10-27 17:27:10Z serge $
+// $Id: call_impl.h 1226 2014-10-29 23:34:06Z serge $
 
 #ifndef CALL_IMPL_H
 #define CALL_IMPL_H
@@ -45,6 +45,8 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
+class Dialer;
+
 class CallImpl
 {
 public:
@@ -68,12 +70,12 @@ public:
 //    state_e get_state() const;
     uint32 get_id() const;
 
+    void register_callback_on_ended( Dialer * callback );
+
     // CallI
     void drop();
     void set_input_file( const std::string & filename );
     void set_output_file( const std::string & filename );
-    bool is_ended() const;
-    bool is_active() const;
     bool register_callback( ICallCallbackPtr callback );
 
     // forwarded IVoipServiceCallback
@@ -102,6 +104,8 @@ private:
     PlayerSM                    player_;
 
     ICallCallbackPtr            callback_;
+
+    Dialer                      * callback_dialer_;
 
 };
 

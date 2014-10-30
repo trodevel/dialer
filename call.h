@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.h 1196 2014-10-24 19:00:52Z serge $
+// $Id: call.h 1226 2014-10-29 23:34:06Z serge $
 
 #ifndef CALL_H
 #define CALL_H
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/types.h"         // uint32
 
 #include "call_i.h"                 // CallI
+#include "call_impl.h"              // CallImpl
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -49,9 +50,9 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
-class CallImpl;
+class Dialer;
 
-class Call: virtual public CallI
+class Call: public CallImpl, virtual public CallI
 {
 public:
     Call( uint32                        call_id,
@@ -60,12 +61,12 @@ public:
           asyncp::IAsyncProxy           * proxy );
     ~Call();
 
+    void register_callback_on_ended( Dialer * callback );
+
     // CallI
     void drop();
     void set_input_file( const std::string & filename );
     void set_output_file( const std::string & filename );
-    bool is_ended() const;
-    bool is_active() const;
     bool register_callback( ICallCallbackPtr callback );
 
     // forwarded IVoipServiceCallback
@@ -85,8 +86,6 @@ private:
     mutable boost::mutex        mutex_;
 
     asyncp::IAsyncProxy         * proxy_;
-
-    CallImpl                    * impl_;
 
 };
 

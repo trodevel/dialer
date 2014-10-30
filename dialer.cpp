@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1199 2014-10-24 19:03:08Z serge $
+// $Id: dialer.cpp 1227 2014-10-29 23:35:05Z serge $
 
 #include "dialer.h"                     // self
 
@@ -123,6 +123,12 @@ Dialer::state_e Dialer::get_state() const
     return impl_->get_state();
 }
 */
+
+
+void Dialer::on_call_ended()
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_ended, impl_ ) ) ) );
+}
 
 void Dialer::initiate_call( const std::string & party )
 {

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1216 2014-10-28 18:04:01Z serge $
+// $Id: dialer_impl.cpp 1229 2014-10-30 00:10:47Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -37,6 +37,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #define MODULENAME      "Dialer"
 
 NAMESPACE_DIALER_START
+
+class Dialer;
 
 DialerImpl::DialerImpl():
     state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( 0L ), proxy_( nullptr ), call_id_( 0 )
@@ -104,6 +106,37 @@ DialerImpl::state_e DialerImpl::get_state() const
     return state_;
 }
 
+void DialerImpl::on_call_ended()
+{
+    dummy_log_debug( MODULENAME, "on_call_ended" );
+
+    SCOPE_LOCK( mutex_ );
+
+    switch( state_ )
+    {
+    case UNKNOWN:
+    case IDLE:
+        dummy_log_fatal( MODULENAME, "on_call_ended: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
+
+    case BUSY:
+        dummy_log_warn( MODULENAME, "on_call_ended: switching to IDLE" );
+        state_      = IDLE;
+        call_id_    = 0;
+
+        if( callback_ )
+            callback_->on_ready();
+
+        return;
+
+    default:
+        dummy_log_fatal( MODULENAME, "on_call_ended: invalid state %s", StrHelper::to_string( state_ ).c_str() );
+
+        ASSERT( 0 );
+    }
+}
+
 boost::shared_ptr< CallI > DialerImpl::get_call()
 {
     // private: no mutex
@@ -150,6 +183,8 @@ void DialerImpl::initiate_call( const std::string & party )
 
         call_.reset( new Call( call_id, voips_, sched_, proxy_ ) );
         call_id_    = call_id;
+
+        //call_->register_callback_on_ended( dynamic_cast<Dialer*>( this )); // TODO: activate, SKV ea30
 
         if( callback_ )
             callback_->on_call_initiate_response( b, status, get_call() );
@@ -229,8 +264,6 @@ void DialerImpl::on_error( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_error( errorcode );
-
-        check_call_end( "on_error" );
     }
         break;
 
@@ -261,8 +294,6 @@ void DialerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_error( errorcode );
-
-        check_call_end( "on_error" );
     }
         break;
 
@@ -325,8 +356,6 @@ void DialerImpl::on_ring( uint32 call_id )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_ring();
-
-        check_call_end( "on_ring" );
     }
         break;
 
@@ -363,8 +392,6 @@ void DialerImpl::on_connect( uint32 call_id )
 
         if( callback_ )
             callback_->on_call_started();
-
-        check_call_end( "on_connect" );
     }
         break;
 
@@ -431,8 +458,6 @@ void DialerImpl::on_play_start( uint32 call_id )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_play_start();
-
-        check_call_end( "on_play_start" );
     }
         break;
 
@@ -466,8 +491,6 @@ void DialerImpl::on_play_stop( uint32 call_id )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_play_stop();
-
-        check_call_end( "on_play_stop" );
     }
         break;
 
@@ -502,8 +525,6 @@ void DialerImpl::on_call_end( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_call_end( errorcode );
-
-        check_call_end( "on_call_end" );
     }
         break;
 
@@ -520,20 +541,6 @@ bool DialerImpl::is_call_id_valid( uint32 call_id ) const
         return false;
 
     return call_id == call_id_;
-}
-
-void DialerImpl::check_call_end( const char * event_name )
-{
-    if( call_->is_ended() )
-    {
-        dummy_log_debug( MODULENAME, "%s: switching to IDLE", event_name );
-        state_      = IDLE;
-        call_id_    = 0;
-
-        if( callback_ )
-            callback_->on_ready();
-    }
-
 }
 
 

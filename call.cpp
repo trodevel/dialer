@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 1196 2014-10-24 19:00:52Z serge $
+// $Id: call.cpp 1226 2014-10-29 23:34:06Z serge $
 
 #include "call.h"                       // self
 
@@ -41,114 +41,99 @@ Call::Call(
         voip_service::IVoipService    * voips,
         sched::IScheduler             * sched,
         asyncp::IAsyncProxy           * proxy ):
-    proxy_( proxy )
+    CallImpl( call_id, voips, sched ), proxy_( proxy )
 {
-    impl_   = new CallImpl( call_id, voips, sched );
-
     ASSERT( proxy );
 }
 
 Call::~Call()
 {
-    if( impl_ )
-    {
-        delete impl_;
-        impl_   = nullptr;
-    }
+}
+
+
+void Call::register_callback_on_ended( Dialer * callback )
+{
+    CallImpl::register_callback_on_ended( callback );
 }
 
 void Call::drop()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::drop, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::drop, this ) ) ) );
 }
 
 void Call::set_input_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::set_input_file, impl_, filename ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::set_input_file, this, filename ) ) ) );
 }
 void Call::set_output_file( const std::string & filename )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::set_output_file, impl_, filename ) ) ) );
-}
-
-bool Call::is_ended() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return impl_->is_ended();
-}
-
-bool Call::is_active() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return impl_->is_active();
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::set_output_file, this, filename ) ) ) );
 }
 
 bool Call::register_callback( ICallCallbackPtr callback )
 {
     SCOPE_LOCK( mutex_ );
 
-    return impl_->register_callback( callback );
+    return this->register_callback( callback );
 }
 
 void Call::on_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_error, impl_, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_error, this, errorcode ) ) ) );
 }
 void Call::on_fatal_error( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_fatal_error, impl_, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_fatal_error, this, errorcode ) ) ) );
 }
 void Call::on_dial()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_dial, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_dial, this ) ) ) );
 }
 void Call::on_ring()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_ring, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_ring, this ) ) ) );
 }
 
 void Call::on_connect()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_connect, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_connect, this ) ) ) );
 }
 
 void Call::on_call_duration( uint32 t )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_call_duration, impl_, t ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_call_duration, this, t ) ) ) );
 }
 
 void Call::on_play_start()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_play_start, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_play_start, this ) ) ) );
 }
 
 void Call::on_play_stop()
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_play_stop, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_play_stop, this ) ) ) );
 }
 
 
@@ -156,7 +141,7 @@ void Call::on_call_end( uint32 errorcode )
 {
     SCOPE_LOCK( mutex_ );
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_call_end, impl_, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &CallImpl::on_call_end, this, errorcode ) ) ) );
 }
 
 

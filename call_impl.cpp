@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call_impl.cpp 1213 2014-10-28 16:50:51Z serge $
+// $Id: call_impl.cpp 1226 2014-10-29 23:34:06Z serge $
 
 #include "call_impl.h"                  // self
 
@@ -27,6 +27,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
+#include "dialer.h"                     // Dialer
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 
@@ -40,7 +41,8 @@ CallImpl::CallImpl(
         uint32                        call_id,
         voip_service::IVoipService    * voips,
         sched::IScheduler             * sched ):
-    state_( IDLE ), voips_( voips ), sched_( sched ), call_id_( call_id ), callback_( 0L )
+    state_( IDLE ), voips_( voips ), sched_( sched ), call_id_( call_id ), callback_( 0L ),
+    callback_dialer_( nullptr )
 {
     player_.init( voips, sched );
 }
@@ -61,6 +63,13 @@ uint32 CallImpl::get_id() const
     SCOPE_LOCK( mutex_ );
 
     return call_id_;
+}
+
+void CallImpl::register_callback_on_ended( Dialer * callback )
+{
+    SCOPE_LOCK( mutex_ );
+
+    callback_dialer_    = callback;
 }
 
 void CallImpl::drop()
@@ -153,20 +162,6 @@ void CallImpl::set_output_file( const std::string & filename )
     }
 }
 
-bool CallImpl::is_ended() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return state_ == ENDED;
-}
-
-bool CallImpl::is_active() const
-{
-    SCOPE_LOCK( mutex_ );
-
-    return state_ == DIALLING || state_ == RINGING || state_ == CONNECTED;
-}
-
 bool CallImpl::register_callback( ICallCallbackPtr callback )
 {
     if( callback == 0L )
@@ -216,6 +211,9 @@ void CallImpl::on_error( uint32 errorcode )
     call_id_    = 0;
     state_      = ENDED;
 
+    if( callback_dialer_ )
+        callback_dialer_->on_call_ended();
+
     if( callback_ )
     {
         callback_->on_error( errorcode );
@@ -252,6 +250,10 @@ void CallImpl::on_fatal_error( uint32 errorcode )
 
     call_id_    = 0;
     state_      = ENDED;
+
+    if( callback_dialer_ )
+        callback_dialer_->on_call_ended();
+
 
     if( callback_ )
     {
@@ -494,6 +496,10 @@ void CallImpl::on_call_end( uint32 errorcode )
         dummy_log_debug( MODULENAME, "on_call_end: switching to IDLE" );
         state_      = ENDED;
         call_id_    = 0;
+
+
+        if( callback_dialer_ )
+            callback_dialer_->on_call_ended();
 
         if( callback_ )
         {

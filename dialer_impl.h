@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1198 2014-10-24 19:02:30Z serge $
+// $Id: dialer_impl.h 1227 2014-10-29 23:35:05Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -72,6 +72,9 @@ public:
 
     state_e get_state() const;
 
+    // called by CallImpl
+    void on_call_ended();
+
     // IDialer
     void initiate_call( const std::string & party );
     void drop_all_calls();
@@ -94,8 +97,6 @@ public:
 private:
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
-
-    void check_call_end( const char * event_name );
 
     boost::shared_ptr< CallI > get_call();
 
