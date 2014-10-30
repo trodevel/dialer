@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1229 2014-10-30 00:10:47Z serge $
+// $Id: dialer_impl.cpp 1230 2014-10-30 18:22:31Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -106,37 +106,6 @@ DialerImpl::state_e DialerImpl::get_state() const
     return state_;
 }
 
-void DialerImpl::on_call_ended()
-{
-    dummy_log_debug( MODULENAME, "on_call_ended" );
-
-    SCOPE_LOCK( mutex_ );
-
-    switch( state_ )
-    {
-    case UNKNOWN:
-    case IDLE:
-        dummy_log_fatal( MODULENAME, "on_call_ended: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( 0 );
-        break;
-
-    case BUSY:
-        dummy_log_warn( MODULENAME, "on_call_ended: switching to IDLE" );
-        state_      = IDLE;
-        call_id_    = 0;
-
-        if( callback_ )
-            callback_->on_ready();
-
-        return;
-
-    default:
-        dummy_log_fatal( MODULENAME, "on_call_ended: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-
-        ASSERT( 0 );
-    }
-}
-
 boost::shared_ptr< CallI > DialerImpl::get_call()
 {
     // private: no mutex
@@ -183,8 +152,6 @@ void DialerImpl::initiate_call( const std::string & party )
 
         call_.reset( new Call( call_id, voips_, sched_, proxy_ ) );
         call_id_    = call_id;
-
-        //call_->register_callback_on_ended( dynamic_cast<Dialer*>( this )); // TODO: activate, SKV ea30
 
         if( callback_ )
             callback_->on_call_initiate_response( b, status, get_call() );
@@ -264,6 +231,14 @@ void DialerImpl::on_error( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_error( errorcode );
+
+        dummy_log_info( MODULENAME, "on_error: switching to IDLE" );
+
+        state_      = IDLE;
+        call_id_    = 0;
+
+        if( callback_ )
+            callback_->on_ready();
     }
         break;
 
@@ -294,6 +269,14 @@ void DialerImpl::on_fatal_error( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_error( errorcode );
+
+        dummy_log_info( MODULENAME, "on_fatal_error: switching to IDLE" );
+
+        state_      = IDLE;
+        call_id_    = 0;
+
+        if( callback_ )
+            callback_->on_ready();
     }
         break;
 
@@ -525,6 +508,14 @@ void DialerImpl::on_call_end( uint32 call_id, uint32 errorcode )
         ASSERT( is_call_id_valid( call_id ) );
 
         call_->on_call_end( errorcode );
+
+        dummy_log_info( MODULENAME, "on_call_end: switching to IDLE" );
+
+        state_      = IDLE;
+        call_id_    = 0;
+
+        if( callback_ )
+            callback_->on_ready();
     }
         break;
 

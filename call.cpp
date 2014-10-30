@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.cpp 1226 2014-10-29 23:34:06Z serge $
+// $Id: call.cpp 1231 2014-10-30 18:24:13Z serge $
 
 #include "call.h"                       // self
 
@@ -48,12 +48,6 @@ Call::Call(
 
 Call::~Call()
 {
-}
-
-
-void Call::register_callback_on_ended( Dialer * callback )
-{
-    CallImpl::register_callback_on_ended( callback );
 }
 
 void Call::drop()

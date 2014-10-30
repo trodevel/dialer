@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1227 2014-10-29 23:35:05Z serge $
+// $Id: dialer_impl.h 1230 2014-10-30 18:22:31Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -71,9 +71,6 @@ public:
     bool is_inited() const;
 
     state_e get_state() const;
-
-    // called by CallImpl
-    void on_call_ended();
 
     // IDialer
     void initiate_call( const std::string & party );

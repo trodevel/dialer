@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: call.h 1226 2014-10-29 23:34:06Z serge $
+// $Id: call.h 1231 2014-10-30 18:24:13Z serge $
 
 #ifndef CALL_H
 #define CALL_H
@@ -50,8 +50,6 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
-class Dialer;
-
 class Call: public CallImpl, virtual public CallI
 {
 public:
@@ -60,8 +58,6 @@ public:
           sched::IScheduler             * sched,
           asyncp::IAsyncProxy           * proxy );
     ~Call();
-
-    void register_callback_on_ended( Dialer * callback );
 
     // CallI
     void drop();
