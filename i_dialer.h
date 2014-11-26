@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_dialer.h 1186 2014-10-22 18:15:19Z serge $
+// $Id: i_dialer.h 1234 2014-11-25 19:24:30Z serge $
 
 #ifndef I_DIALER_H
 #define I_DIALER_H
@@ -31,7 +31,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_DIALER_START
 
-class CallI;
 class IDialerCallback;
 
 class IDialer
@@ -41,11 +40,10 @@ public:
 public:
     virtual ~IDialer() {};
 
-    virtual bool register_callback( IDialerCallback * callback )                                = 0;
-    virtual void initiate_call( const std::string & party )                                     = 0;
-    virtual void drop_all_calls()                                                               = 0;
-
-    virtual bool shutdown()                                                                     = 0;
+    virtual void initiate_call( const std::string & party )                         = 0;
+    virtual void drop( uint32 call_id )                                             = 0;
+    virtual void set_input_file( uint32 call_id, const std::string & filename )     = 0;
+    virtual void set_output_file( uint32 call_id, const std::string & filename )    = 0;
 };
 
 NAMESPACE_DIALER_END

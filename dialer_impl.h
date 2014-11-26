@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1230 2014-10-30 18:22:31Z serge $
+// $Id: dialer_impl.h 1234 2014-11-25 19:24:30Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -31,7 +31,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
 #include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
-#include "call.h"                   // Call
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -54,7 +53,10 @@ public:
     {
         UNKNOWN = 0,
         IDLE,
-        BUSY,
+        WAITING_VOIP_RESPONSE,
+        DIALLING,
+        RINGING,
+        CONNECTED,
     };
 
 public:
@@ -63,8 +65,7 @@ public:
 
     bool init(
             voip_service::IVoipService  * voips,
-            sched::IScheduler           * sched,
-            asyncp::IAsyncProxy         * proxy );
+            sched::IScheduler           * sched );
 
     bool register_callback( IDialerCallback * callback );
 
@@ -72,14 +73,16 @@ public:
 
     state_e get_state() const;
 
-    // IDialer
+    // interface IDialer
     void initiate_call( const std::string & party );
-    void drop_all_calls();
+    void drop( uint32 call_id );
+    void set_input_file( uint32 call_id, const std::string & filename );
+    void set_output_file( uint32 call_id, const std::string & filename );
 
+    // interface IControllable
     bool shutdown();
 
-
-    // IVoipServiceCallback
+    // interface IVoipServiceCallback
     void on_ready( uint32 errorcode );
     void on_error( uint32 call_id, uint32 errorcode );
     void on_fatal_error( uint32 call_id, uint32 errorcode );
@@ -95,8 +98,6 @@ private:
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
 
-    boost::shared_ptr< CallI > get_call();
-
 private:
     mutable boost::mutex        mutex_;
 
@@ -105,10 +106,9 @@ private:
     voip_service::IVoipService  * voips_;
     sched::IScheduler           * sched_;
     IDialerCallback             * callback_;
-    asyncp::IAsyncProxy         * proxy_;
 
-    boost::shared_ptr< Call >   call_;
     uint32                      call_id_;
+    PlayerSM                    player_;
 };
 
 NAMESPACE_DIALER_END

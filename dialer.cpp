@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1230 2014-10-30 18:22:31Z serge $
+// $Id: dialer.cpp 1234 2014-11-25 19:24:30Z serge $
 
 #include "dialer.h"                     // self
 
@@ -27,12 +27,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../asyncp/async_proxy.h"      // AsyncProxy
 #include "../asyncp/event.h"            // new_event
 
-#include "dialer_impl.h"                // DialerImpl
-
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
-
-#include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
 #define MODULENAME      "Dialer"
 
@@ -49,19 +45,6 @@ Dialer::Dialer()
 
         ASSERT( proxy_->init( cfg ) );
     }
-
-    proxy_call_  = new asyncp::AsyncProxy;
-
-    {
-        asyncp::AsyncProxy::Config cfg;
-        cfg.sleep_time_ms   = 1;
-        cfg.name            = MODULENAME "-Call";
-
-        ASSERT( proxy_call_->init( cfg ) );
-    }
-
-    impl_   = new DialerImpl;
-
 }
 
 Dialer::~Dialer()
@@ -71,122 +54,102 @@ Dialer::~Dialer()
         delete proxy_;
         proxy_  = nullptr;
     }
-
-    if( proxy_call_ )
-    {
-        delete proxy_call_;
-        proxy_call_  = nullptr;
-    }
-
-    if( impl_ )
-    {
-        delete impl_;
-        impl_   = nullptr;
-    }
 }
 
 bool Dialer::init(
         voip_service::IVoipService  * voips,
         sched::IScheduler           * sched )
 {
-    return impl_->init( voips, sched, proxy_call_ );
+    return DialerImpl::init( voips, sched );
 }
 
 void Dialer::thread_func()
 {
     dummy_log_debug( MODULENAME, "thread_func: started" );
 
-    boost::thread_group tg;
-
-    tg.create_thread( boost::bind( &asyncp::AsyncProxy::thread_func, proxy_ ) );
-    tg.create_thread( boost::bind( &asyncp::AsyncProxy::thread_func, proxy_call_ ) );
-
-    tg.join_all();
-
+    proxy_->thread_func();
 
     dummy_log_debug( MODULENAME, "thread_func: ended" );
 }
 
 bool Dialer::register_callback( IDialerCallback * callback )
 {
-    return impl_->register_callback( callback );
+    return DialerImpl::register_callback( callback );
 }
 
 bool Dialer::is_inited() const
 {
-    return impl_->is_inited();
+    return DialerImpl::is_inited();
 }
-
-/*
-Dialer::state_e Dialer::get_state() const
-{
-    return impl_->get_state();
-}
-*/
 
 void Dialer::initiate_call( const std::string & party )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::initiate_call, impl_, party ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::initiate_call, this, party ) ) ) );
 }
-void Dialer::drop_all_calls()
+void Dialer::drop( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::drop_all_calls, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::drop, this, call_id ) ) ) );
+}
+void Dialer::set_input_file( uint32 call_id, const std::string & filename )
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::set_input_file, this, call_id, filename ) ) ) );
+}
+void Dialer::set_output_file( uint32 call_id, const std::string & filename )
+{
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::set_output_file, this, call_id, filename  ) ) ) );
 }
 
 bool Dialer::shutdown()
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::shutdown, impl_ ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::shutdown, this ) ) ) );
 
-    bool b1 = proxy_->shutdown();
-    bool b2 = proxy_call_->shutdown();
-
-    return b1 && b2;
+    return proxy_->shutdown();
 }
 
 void Dialer::on_ready( uint32 errorcode )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ready, impl_, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ready, this, errorcode ) ) ) );
 }
 void Dialer::on_error( uint32 call_id, uint32 errorcode )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_error, impl_, call_id, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_error, this, call_id, errorcode ) ) ) );
 }
 void Dialer::on_fatal_error( uint32 call_id, uint32 errorcode )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_fatal_error, impl_, call_id, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_fatal_error, this, call_id, errorcode ) ) ) );
 }
 void Dialer::on_dial( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_dial, impl_, call_id ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_dial, this, call_id ) ) ) );
 }
 void Dialer::on_ring( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ring, impl_, call_id ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ring, this, call_id ) ) ) );
 }
 
 void Dialer::on_connect( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_connect, impl_, call_id ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_connect, this, call_id ) ) ) );
 }
 
 void Dialer::on_call_duration( uint32 call_id, uint32 t )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_duration, impl_, call_id, t ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_duration, this, call_id, t ) ) ) );
 }
 
 void Dialer::on_play_start( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_start, impl_, call_id ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_start, this, call_id ) ) ) );
 }
 
 void Dialer::on_play_stop( uint32 call_id )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_stop, impl_, call_id ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_stop, this, call_id ) ) ) );
 }
 
 void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_end, impl_, call_id, errorcode ) ) ) );
+    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_end, this, call_id, errorcode ) ) ) );
 }
 
 

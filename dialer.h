@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1230 2014-10-30 18:22:31Z serge $
+// $Id: dialer.h 1234 2014-11-25 19:24:30Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -32,8 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../threcon/i_controllable.h"      // IControllable
 #include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
-#include "player_sm.h"              // PlayerSM
-#include "call.h"                   // Call
+#include "dialer_impl.h"            // DialerImpl
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -54,9 +53,8 @@ class AsyncProxy;
 
 NAMESPACE_DIALER_START
 
-class DialerImpl;
 
-class Dialer: virtual public IDialer, virtual public voip_service::IVoipServiceCallback, public virtual threcon::IControllable
+class Dialer: public DialerImpl, virtual public IDialer, virtual public voip_service::IVoipServiceCallback, public virtual threcon::IControllable
 {
 public:
     Dialer();
@@ -72,16 +70,16 @@ public:
 
     bool is_inited() const;
 
-    //state_e get_state() const;
-
-    // IDialer
+    // interface IDialer
     virtual void initiate_call( const std::string & party );
-    virtual void drop_all_calls();
+    virtual void drop( uint32 call_id );
+    virtual void set_input_file( uint32 call_id, const std::string & filename );
+    virtual void set_output_file( uint32 call_id, const std::string & filename );
 
+    // interface IControllable
     virtual bool shutdown();
 
-
-    // IVoipServiceCallback
+    // interface IVoipServiceCallback
     virtual void on_ready( uint32 errorcode );
     virtual void on_error( uint32 call_id, uint32 errorcode );
     virtual void on_fatal_error( uint32 call_id, uint32 errorcode );
@@ -96,8 +94,6 @@ public:
 private:
 
     asyncp::AsyncProxy          * proxy_;
-    asyncp::AsyncProxy          * proxy_call_;
-    DialerImpl                  * impl_;
 };
 
 NAMESPACE_DIALER_END
