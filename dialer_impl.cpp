@@ -19,11 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1234 2014-11-25 19:24:30Z serge $
+// $Id: dialer_impl.cpp 1279 2014-12-23 18:24:10Z serge $
 
 #include "dialer_impl.h"                // self
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/object_factory.h"  // voip_service::create_message_t
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../asyncp/i_async_proxy.h"    // IAsyncProxy
 #include "../asyncp/event.h"            // new_event
@@ -102,11 +103,47 @@ DialerImpl::state_e DialerImpl::get_state() const
     return state_;
 }
 
-void DialerImpl::initiate_call( const std::string & party )
+void Dialer::consume( const DialerObject * req )
 {
-    dummy_log_debug( MODULENAME, "initiate_call: %s", party.c_str() );
+    ServerBase::consume( req );
+}
 
+// interface IVoipServiceCallback
+void Dialer::consume( const voip_service::VoipioCallbackObject * req )
+{
+    ServerBase::consume( req );
+}
+
+void Dialer::handle( const servt::IObject* req )
+{
     SCOPE_LOCK( mutex_ );
+
+    if( typeid( *req ) == typeid( DialerInitiateCallRequest ) )
+    {
+        handle( dynamic_cast< const DialerInitiateCallRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( DialerPlayFile ) )
+    {
+        handle( dynamic_cast< const DialerPlayFile *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( DialerDrop ) )
+    {
+        handle( dynamic_cast< const DialerDrop *>( req ) );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
+
+        ASSERT( 0 );
+    }
+
+    delete req;
+}
+
+
+void DialerImpl::handle( const DialerInitiateCallRequest * req )
+{
+    dummy_log_debug( MODULENAME, "initiate_call: %s", req->party.c_str() );
 
     ASSERT( is_inited__() );
 
@@ -128,19 +165,9 @@ void DialerImpl::initiate_call( const std::string & party )
         uint32 call_id = 0;
         uint32 status   = 0;
 
-        bool b = voips_->initiate_call( party, call_id, status );
+        voips_->consume( voip_service::create_initiate_call_request( req->party ) );
 
         dummy_log_debug( MODULENAME, "initiate_call: call id = %u, status = %u, result = %u", call_id, status, b );
-
-        if( !b )
-        {
-            dummy_log_error( MODULENAME, "initiate_call: voip service failed" );
-
-            if( callback_ )
-                callback_->on_error_response( status, "voip service failed" );
-
-            return;
-        }
 
         call_id_    = call_id;
 
@@ -159,7 +186,7 @@ void DialerImpl::initiate_call( const std::string & party )
         ASSERT( 0 );
     }
 }
-void DialerImpl::drop( uint32 call_id )
+void DialerImpl::handle( const DialerDrop * req )
 {
     dummy_log_debug( MODULENAME, "drop" );
 
@@ -177,9 +204,9 @@ void DialerImpl::drop( uint32 call_id )
 
     case CONNECTED:
     {
-        ASSERT( is_call_id_valid( call_id ) );
+        ASSERT( is_call_id_valid( req->call_id ) );
 
-        voips_->drop_call( call_id );
+        voips_->drop_call( req->call_id );
 
         dummy_log_info( MODULENAME, "drop: switching to IDLE" );
 
@@ -198,7 +225,7 @@ void DialerImpl::drop( uint32 call_id )
     }
 }
 
-void DialerImpl::set_input_file( uint32 call_id, const std::string & filename )
+void DialerImpl::handle( const DialerPlayFile * req )
 {
     dummy_log_debug( MODULENAME, "set_input_file" );
 
@@ -216,9 +243,9 @@ void DialerImpl::set_input_file( uint32 call_id, const std::string & filename )
 
     case CONNECTED:
     {
-        ASSERT( is_call_id_valid( call_id ) );
+        ASSERT( is_call_id_valid( req->call_id ) );
 
-        bool b = player_.play_file( call_id, filename );
+        bool b = player_.play_file( req->call_id, req->filename );
 
         if( b == false )
         {
@@ -234,7 +261,7 @@ void DialerImpl::set_input_file( uint32 call_id, const std::string & filename )
     }
 }
 
-void DialerImpl::set_output_file( uint32 call_id, const std::string & filename )
+void DialerImpl::handle( const DialerRecordFile * req )
 {
     dummy_log_debug( MODULENAME, "set_output_file" );
 
@@ -252,9 +279,9 @@ void DialerImpl::set_output_file( uint32 call_id, const std::string & filename )
 
     case CONNECTED:
     {
-        ASSERT( is_call_id_valid( call_id ) );
+        ASSERT( is_call_id_valid( req->call_id ) );
 
-        bool b = voips_->set_output_file( call_id, filename );
+        bool b = voips_->set_output_file( req->call_id, req->filename );
 
         if( b == false )
         {
@@ -277,7 +304,7 @@ bool DialerImpl::shutdown()
     if( !is_inited__() )
         return false;
 
-    return voips_->shutdown();
+    return ServerBase::shutdown();
 }
 
 

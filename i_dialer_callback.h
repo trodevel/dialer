@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_dialer_callback.h 1234 2014-11-25 19:24:30Z serge $
+// $Id: i_dialer_callback.h 1279 2014-12-23 18:24:10Z serge $
 
 #ifndef I_DIALER_CALLBACK_H
 #define I_DIALER_CALLBACK_H
@@ -30,22 +30,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_DIALER_START
 
+class DialerCallbackObject;
+
 class IDialerCallback
 {
 public:
 
     virtual ~IDialerCallback() {}
 
-    virtual void on_call_initiate_response( uint32 call_id, uint32 status )     = 0;
-    virtual void on_error_response( uint32 error, const std::string & descr )   = 0;
-    virtual void on_dial( uint32 call_id )                                      = 0;
-    virtual void on_ring( uint32 call_id )                                      = 0;
-    virtual void on_call_started( uint32 call_id )                              = 0;
-    virtual void on_call_duration( uint32 call_id, uint32 t )                   = 0;
-    virtual void on_call_end( uint32 call_id, uint32 errorcode )                = 0;
-    virtual void on_ready()                                                     = 0;
-    virtual void on_error( uint32 call_id, uint32 errorcode )                   = 0;
-    virtual void on_fatal_error( uint32 call_id, uint32 errorcode )             = 0;
+    virtual void consume( const DialerCallbackObject * req )    = 0;
 };
 
 NAMESPACE_DIALER_END

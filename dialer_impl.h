@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1234 2014-11-25 19:24:30Z serge $
+// $Id: dialer_impl.h 1279 2014-12-23 18:24:10Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -29,6 +29,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/types.h"         // uint32
 
 #include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
+#include "../threcon/i_controllable.h"      // IControllable
+#include "../servt/server_t.h"          // ServerT
+#include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
 
@@ -46,8 +49,18 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
-class DialerImpl
+class DialerImpl;
+
+typedef servt::ServerT< const servt::IObject*, DialerImpl> ServerBase;
+
+class DialerImpl:
+        public ServerBase,
+        virtual public IDialer,
+        virtual public voip_service::IVoipServiceCallback,
+        virtual public threcon::IControllable
 {
+    friend ServerBase;
+
 public:
     enum state_e
     {
@@ -74,10 +87,10 @@ public:
     state_e get_state() const;
 
     // interface IDialer
-    void initiate_call( const std::string & party );
-    void drop( uint32 call_id );
-    void set_input_file( uint32 call_id, const std::string & filename );
-    void set_output_file( uint32 call_id, const std::string & filename );
+    void consume( const DialerObject * req );
+
+    // interface IVoipServiceCallback
+    virtual void consume( const voip_service::VoipioCallbackObject * req );
 
     // interface IControllable
     bool shutdown();
@@ -95,6 +108,15 @@ public:
     void on_play_stop( uint32 call_id );
 
 private:
+    // IVoipService interface
+    void handle( const servt::IObject* req );
+
+    void handle( const DialerInitiateCallRequest * req );
+    void handle( const DialerDrop * req );
+    void handle( const DialerPlayFile * req );
+    void handle( const DialerRecordFile * req );
+
+
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
 
