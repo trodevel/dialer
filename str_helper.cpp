@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.cpp 1234 2014-11-25 19:24:30Z serge $
+// $Id: str_helper.cpp 1284 2014-12-24 16:00:13Z serge $
 
 #include "str_helper.h"             // self
 
@@ -40,13 +40,14 @@ std::string StrHelper::to_string( const DialerImpl::state_e & l )
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( UNKNOWN ) );
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( IDLE ) );
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( WAITING_VOIP_RESPONSE ) );
+        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( WAITING_DIALLING ) );
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( DIALLING ) );
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( RINGING ) );
         MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( CONNECTED ) );
     }
 
     if( 0 == m.count( l ) )
-        return "UNKNOWN";
+        return "???";
 
     return m[l];
 }

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1279 2014-12-23 18:24:10Z serge $
+// $Id: dialer_impl.h 1284 2014-12-24 16:00:13Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -67,6 +67,7 @@ public:
         UNKNOWN = 0,
         IDLE,
         WAITING_VOIP_RESPONSE,
+        WAITING_DIALLING,
         DIALLING,
         RINGING,
         CONNECTED,
@@ -95,27 +96,27 @@ public:
     // interface IControllable
     bool shutdown();
 
-    // interface IVoipServiceCallback
-    void on_ready( uint32 errorcode );
-    void on_error( uint32 call_id, uint32 errorcode );
-    void on_fatal_error( uint32 call_id, uint32 errorcode );
-    void on_call_end( uint32 call_id, uint32 errorcode );
-    void on_dial( uint32 call_id );
-    void on_ring( uint32 call_id );
-    void on_connect( uint32 call_id );
-    void on_call_duration( uint32 call_id, uint32 t );
-    void on_play_start( uint32 call_id );
-    void on_play_stop( uint32 call_id );
 
 private:
-    // IVoipService interface
     void handle( const servt::IObject* req );
 
+    // for interface IDialer
     void handle( const DialerInitiateCallRequest * req );
     void handle( const DialerDrop * req );
     void handle( const DialerPlayFile * req );
     void handle( const DialerRecordFile * req );
 
+    // for interface IVoipServiceCallback
+    void handle( voip_service::VoipioInitiateCallResponse * r );
+    void handle( voip_service::VoipioError * r );
+    void handle( voip_service::VoipioFatalError * r );
+    void handle( voip_service::VoipioCallEnd * r );
+    void handle( voip_service::VoipioDial * r );
+    void handle( voip_service::VoipioRing * r );
+    void handle( voip_service::VoipioConnect * r );
+    void handle( voip_service::VoipioCallDuration * r );
+    void handle( voip_service::VoipioPlayStarted * r );
+    void handle( voip_service::VoipioPlayStopped * r );
 
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
