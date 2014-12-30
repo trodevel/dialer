@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.cpp 1284 2014-12-24 16:00:13Z serge $
+// $Id: dialer_impl.cpp 1288 2014-12-29 18:18:07Z serge $
 
 #include "dialer_impl.h"                // self
 
@@ -29,6 +29,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../asyncp/i_async_proxy.h"    // IAsyncProxy
 #include "../asyncp/event.h"            // new_event
 #include "str_helper.h"                 // StrHelper
+#include "object_factory.h"             // create_error_response
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
@@ -42,6 +43,7 @@ NAMESPACE_DIALER_START
 class Dialer;
 
 DialerImpl::DialerImpl():
+    ServerBase( this ),
     state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( 0L ), call_id_( 0 )
 {
 }
@@ -103,18 +105,18 @@ DialerImpl::state_e DialerImpl::get_state() const
     return state_;
 }
 
-void Dialer::consume( const DialerObject * req )
+void DialerImpl::consume( const DialerObject * req )
 {
     ServerBase::consume( req );
 }
 
 // interface IVoipServiceCallback
-void Dialer::consume( const voip_service::VoipioCallbackObject * req )
+void DialerImpl::consume( const voip_service::VoipioCallbackObject * req )
 {
     ServerBase::consume( req );
 }
 
-void Dialer::handle( const servt::IObject* req )
+void DialerImpl::handle( const servt::IObject* req )
 {
     SCOPE_LOCK( mutex_ );
 
@@ -135,6 +137,10 @@ void Dialer::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( voip_service::VoipioInitiateCallResponse ) )
     {
         handle( dynamic_cast< const voip_service::VoipioInitiateCallResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioDropResponse ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioDropResponse *>( req ) );
     }
     else if( typeid( *req ) == typeid( voip_service::VoipioError ) )
     {
@@ -208,38 +214,21 @@ void DialerImpl::handle( const DialerDrop * req )
 
     // private: no mutex lock
 
-    switch( state_ )
+    if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED )
     {
-    case IDLE:
-    case WAITING_VOIP_RESPONSE:
         dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
-        break;
-
-    case WAITING_DIALLING:
-    case DIALLING:
-    case RINGING:
-    case CONNECTED:
-    {
-        ASSERT( is_call_id_valid( req->call_id ) );
-
-        voips_->drop_call( req->call_id );
-
-        dummy_log_info( MODULENAME, "drop: switching to IDLE" );
-
-        state_      = IDLE;
-        call_id_    = 0;
-
-        if( callback_ )
-            callback_->on_ready();
+        return;
     }
-        break;
 
-    default:
-        dummy_log_fatal( MODULENAME, "drop: invalid state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( 0 );
-        break;
-    }
+    ASSERT( is_call_id_valid( req->call_id ) );
+
+    voips_->consume( voip_service::create_message_t<voip_service::VoipioDrop>( req->call_id ) );
+
+    dummy_log_info( MODULENAME, "drop: switching to WAITING_DROP_RESPONSE" );
+
+    state_      = WAITING_DROP_RESPONSE;
+
 }
 
 void DialerImpl::handle( const DialerPlayFile * req )
@@ -280,7 +269,9 @@ void DialerImpl::handle( const DialerRecordFile * req )
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    bool b = voips_->set_output_file( req->call_id, req->filename );
+    voips_->consume( voip_service::create_record_file( req->call_id, req->filename ) );
+
+    bool b = true;
 
     if( b == false )
     {
@@ -317,6 +308,28 @@ void DialerImpl::handle( voip_service::VoipioInitiateCallResponse * r )
     state_  = WAITING_DIALLING;
 }
 
+void DialerImpl::handle( voip_service::VoipioDropResponse * r )
+{
+    dummy_log_debug( MODULENAME, "VoipioDropResponse: call id = %u", r->call_id );
+
+    if( state_ != WAITING_DROP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "VoipioDropResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( callback_ )
+        callback_->consume( create_message_t<DialerDropResponse>( r->call_id ) );
+
+    dummy_log_info( MODULENAME, "VoipioDropResponse: switching to IDLE" );
+
+    state_      = IDLE;
+    call_id_    = 0;
+}
+
 void DialerImpl::handle( voip_service::VoipioError * r )
 {
     dummy_log_debug( MODULENAME, "on_error: %s", r->error.c_str() );
@@ -327,7 +340,7 @@ void DialerImpl::handle( voip_service::VoipioError * r )
     {
         dummy_log_warn( MODULENAME, "on_error: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
-        break;
+        return;
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
@@ -336,15 +349,12 @@ void DialerImpl::handle( voip_service::VoipioError * r )
         player_.stop();
 
     if( callback_ )
-        callback_->on_error( r->call_id, r->error );
+        callback_->consume( create_error( r->call_id, r->error ) );
 
     dummy_log_info( MODULENAME, "on_error: switching to IDLE" );
 
     state_      = IDLE;
     call_id_    = 0;
-
-    if( callback_ )
-        callback_->on_ready();
 }
 void DialerImpl::handle( voip_service::VoipioFatalError * r )
 {
@@ -356,7 +366,7 @@ void DialerImpl::handle( voip_service::VoipioFatalError * r )
     {
         dummy_log_warn( MODULENAME, "on_fatal_error: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
-        break;
+        return;
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
@@ -365,15 +375,12 @@ void DialerImpl::handle( voip_service::VoipioFatalError * r )
         player_.stop();
 
     if( callback_ )
-        callback_->on_fatal_error( r->call_id, r->error );
+        callback_->consume( create_fatal_error( r->call_id, r->error ) );
 
     dummy_log_info( MODULENAME, "on_fatal_error: switching to IDLE" );
 
     state_      = IDLE;
     call_id_    = 0;
-
-    if( callback_ )
-        callback_->on_ready();
 }
 void DialerImpl::handle( voip_service::VoipioDial * r )
 {
@@ -398,7 +405,7 @@ void DialerImpl::handle( voip_service::VoipioDial * r )
     state_  = DIALLING;
 
     if( callback_ )
-        callback_->on_dial( r->call_id );
+        callback_->consume( create_message_t<DialerDial>( r->call_id ) );
 }
 void DialerImpl::handle( voip_service::VoipioRing * r )
 {
@@ -422,7 +429,7 @@ void DialerImpl::handle( voip_service::VoipioRing * r )
     ASSERT( is_call_id_valid( r->call_id ) );
 
     if( callback_ )
-        callback_->on_ring( r->call_id );
+        callback_->consume( create_message_t<DialerRing>( r->call_id ) );
 
     state_  = RINGING;
 }
@@ -442,16 +449,7 @@ void DialerImpl::handle( voip_service::VoipioConnect * r )
 
     if( state_ == DIALLING )
     {
-        ASSERT( is_call_id_valid( r->call_id ) );
-
         dummy_log_debug( MODULENAME, "on_connect: switching to CONNECTED ***** valid for PSTN calls *****" );
-
-        state_  = CONNECTED;
-
-        if( callback_ )
-            callback_->on_call_started( r->call_id );
-
-        return;
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
@@ -461,7 +459,7 @@ void DialerImpl::handle( voip_service::VoipioConnect * r )
     state_  = CONNECTED;
 
     if( callback_ )
-        callback_->on_call_started( r->call_id );
+        callback_->consume( create_message_t<DialerConnect>( r->call_id ) );
 }
 
 void DialerImpl::handle( voip_service::VoipioCallDuration * r )
@@ -480,7 +478,7 @@ void DialerImpl::handle( voip_service::VoipioCallDuration * r )
     ASSERT( is_call_id_valid( r->call_id ) );
 
     if( callback_ )
-        callback_->on_call_duration( r->call_id, r->t );
+        callback_->consume( create_call_duration( r->call_id, r->t ) );
 }
 
 void DialerImpl::handle( voip_service::VoipioPlayStarted * r )
@@ -543,15 +541,12 @@ void DialerImpl::handle( voip_service::VoipioCallEnd * r )
         player_.stop();
 
     if( callback_ )
-        callback_->on_call_end( r->call_id, r->errorcode );
+        callback_->consume( create_call_end( r->call_id, r->errorcode ) );
 
     dummy_log_info( MODULENAME, "on_call_end: switching to IDLE" );
 
     state_      = IDLE;
     call_id_    = 0;
-
-    if( callback_ )
-        callback_->on_ready();
 }
 
 bool DialerImpl::is_call_id_valid( uint32 call_id ) const

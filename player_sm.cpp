@@ -19,13 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.cpp 1144 2014-10-13 17:34:19Z serge $
+// $Id: player_sm.cpp 1288 2014-12-29 18:18:07Z serge $
 
 #include "player_sm.h"              // self
 
 #include <boost/bind.hpp>           // boost::bind
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/object_factory.h"  // voip_service::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
@@ -101,7 +102,9 @@ bool PlayerSM::play_file( uint32 call_id, const std::string & filename )
     if( !is_inited() )
         return false;
 
-    bool b = voips_->set_input_file( call_id, filename );
+    voips_->consume( voip_service::create_play_file( call_id, filename ) );
+
+    bool b = true;
 
     if( !b )
     {

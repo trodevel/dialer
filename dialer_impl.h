@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer_impl.h 1284 2014-12-24 16:00:13Z serge $
+// $Id: dialer_impl.h 1288 2014-12-29 18:18:07Z serge $
 
 #ifndef DIALER_IMPL_H
 #define DIALER_IMPL_H
@@ -28,9 +28,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 
-#include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
-#include "../threcon/i_controllable.h"      // IControllable
-#include "../servt/server_t.h"          // ServerT
+#include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
+#include "../voip_io/objects.h"                     // VoipioInitiateCallResponse
+#include "../threcon/i_controllable.h"              // IControllable
+#include "../servt/server_t.h"      // ServerT
+#include "objects.h"                // DialerObject
 #include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
@@ -71,6 +73,7 @@ public:
         DIALLING,
         RINGING,
         CONNECTED,
+        WAITING_DROP_RESPONSE,
     };
 
 public:
@@ -108,6 +111,7 @@ private:
 
     // for interface IVoipServiceCallback
     void handle( voip_service::VoipioInitiateCallResponse * r );
+    void handle( voip_service::VoipioDropResponse * r );
     void handle( voip_service::VoipioError * r );
     void handle( voip_service::VoipioFatalError * r );
     void handle( voip_service::VoipioCallEnd * r );

@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1278 2014-12-23 18:23:45Z serge $
+// $Id: objects.h 1288 2014-12-29 18:18:07Z serge $
 
 #ifndef DIALER_OBJECTS_H
 #define DIALER_OBJECTS_H
@@ -86,10 +86,13 @@ struct DialerInitiateCallResponse: public DialerCallbackObject
     uint32 status;
 };
 
-
 struct DialerCallbackCallObject: public DialerCallbackObject
 {
     uint32          call_id;
+};
+
+struct DialerDropResponse: public DialerCallbackCallObject
+{
 };
 
 struct DialerDial: public DialerCallbackCallObject
