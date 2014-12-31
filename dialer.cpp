@@ -19,137 +19,537 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1234 2014-11-25 19:24:30Z serge $
+// $Id: dialer.cpp 1291 2014-12-30 18:20:37Z serge $
 
 #include "dialer.h"                     // self
 
+#include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/object_factory.h"  // voip_service::create_message_t
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../asyncp/async_proxy.h"      // AsyncProxy
-#include "../asyncp/event.h"            // new_event
+#include "str_helper.h"                 // StrHelper
+#include "object_factory.h"             // create_error_response
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
+
+#include "namespace_lib.h"              // NAMESPACE_DIALER_START
 
 #define MODULENAME      "Dialer"
 
 NAMESPACE_DIALER_START
 
-Dialer::Dialer()
+class Dialer;
+
+Dialer::Dialer():
+    ServerBase( this ),
+    state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( 0L ), call_id_( 0 )
 {
-    proxy_  = new asyncp::AsyncProxy;
-
-    {
-        asyncp::AsyncProxy::Config cfg;
-        cfg.sleep_time_ms   = 1;
-        cfg.name            = MODULENAME;
-
-        ASSERT( proxy_->init( cfg ) );
-    }
 }
 
 Dialer::~Dialer()
 {
-    if( proxy_ )
-    {
-        delete proxy_;
-        proxy_  = nullptr;
-    }
 }
 
 bool Dialer::init(
         voip_service::IVoipService  * voips,
         sched::IScheduler           * sched )
 {
-    return DialerImpl::init( voips, sched );
-}
+	SCOPE_LOCK( mutex_ );
 
-void Dialer::thread_func()
-{
-    dummy_log_debug( MODULENAME, "thread_func: started" );
+    if( !voips || !sched )
+        return false;
 
-    proxy_->thread_func();
+    voips_      = voips;
+    sched_      = sched;
+    //state_  = IDLE;
 
-    dummy_log_debug( MODULENAME, "thread_func: ended" );
+    return true;
 }
 
 bool Dialer::register_callback( IDialerCallback * callback )
 {
-    return DialerImpl::register_callback( callback );
+    if( callback == 0L )
+        return false;
+
+    SCOPE_LOCK( mutex_ );
+
+    if( callback_ != 0L )
+        return false;
+
+    callback_ = callback;
+
+    return true;
 }
 
 bool Dialer::is_inited() const
 {
-    return DialerImpl::is_inited();
+    SCOPE_LOCK( mutex_ );
+
+    return is_inited__();
 }
 
-void Dialer::initiate_call( const std::string & party )
+bool Dialer::is_inited__() const
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::initiate_call, this, party ) ) ) );
+    if( !voips_ || !sched_ )
+        return false;
+
+    return true;
 }
-void Dialer::drop( uint32 call_id )
+
+Dialer::state_e Dialer::get_state() const
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::drop, this, call_id ) ) ) );
+    SCOPE_LOCK( mutex_ );
+
+    return state_;
 }
-void Dialer::set_input_file( uint32 call_id, const std::string & filename )
+
+void Dialer::consume( const DialerObject * req )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::set_input_file, this, call_id, filename ) ) ) );
+    ServerBase::consume( req );
 }
-void Dialer::set_output_file( uint32 call_id, const std::string & filename )
+
+// interface IVoipServiceCallback
+void Dialer::consume( const voip_service::VoipioCallbackObject * req )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::set_output_file, this, call_id, filename  ) ) ) );
+    ServerBase::consume( req );
+}
+
+void Dialer::handle( const servt::IObject* req )
+{
+    SCOPE_LOCK( mutex_ );
+
+    ASSERT( is_inited__() );
+
+    if( typeid( *req ) == typeid( DialerInitiateCallRequest ) )
+    {
+        handle( dynamic_cast< const DialerInitiateCallRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( DialerPlayFile ) )
+    {
+        handle( dynamic_cast< const DialerPlayFile *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( DialerDrop ) )
+    {
+        handle( dynamic_cast< const DialerDrop *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioInitiateCallResponse ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioInitiateCallResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioDropResponse ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioDropResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioError ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioError *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioFatalError ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioFatalError *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioCallEnd ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioCallEnd *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioDial ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioDial *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioRing ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioRing *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioConnect ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioConnect *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioCallDuration ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioCallDuration *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioPlayStarted ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioPlayStarted *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioPlayStopped ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioPlayStopped *>( req ) );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
+
+        ASSERT( 0 );
+    }
+
+    delete req;
+}
+
+
+void Dialer::handle( const DialerInitiateCallRequest * req )
+{
+    dummy_log_debug( MODULENAME, "initiate_call: %s", req->party.c_str() );
+
+    if( state_ != IDLE )
+    {
+        dummy_log_warn( MODULENAME, "initiate_call: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        if( callback_ )
+            callback_->consume( create_error_response( 0, "busy, cannot proceed in state " + StrHelper::to_string( state_ ) ) );
+
+        return;
+    }
+
+    voips_->consume( voip_service::create_initiate_call_request( req->party ) );
+
+    state_  = WAITING_VOIP_RESPONSE;
+}
+
+void Dialer::handle( const DialerDrop * req )
+{
+    dummy_log_debug( MODULENAME, "drop" );
+
+    // private: no mutex lock
+
+    if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( req->call_id ) );
+
+    voips_->consume( voip_service::create_message_t<voip_service::VoipioDrop>( req->call_id ) );
+
+    dummy_log_info( MODULENAME, "drop: switching to WAITING_DROP_RESPONSE" );
+
+    state_      = WAITING_DROP_RESPONSE;
+
+}
+
+void Dialer::handle( const DialerPlayFile * req )
+{
+    dummy_log_debug( MODULENAME, "set_input_file" );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "set_input_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( req->call_id ) );
+
+    bool b = player_.play_file( req->call_id, req->filename );
+
+    if( b == false )
+    {
+        dummy_log_error( MODULENAME, "set_input_file: player failed" );
+    }
+}
+
+void Dialer::handle( const DialerRecordFile * req )
+{
+    dummy_log_debug( MODULENAME, "set_output_file" );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "set_output_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( req->call_id ) );
+
+    voips_->consume( voip_service::create_record_file( req->call_id, req->filename ) );
+
+    bool b = true;
+
+    if( b == false )
+    {
+        dummy_log_error( MODULENAME, "set_output_file: voip service failed" );
+    }
 }
 
 bool Dialer::shutdown()
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::shutdown, this ) ) ) );
+    SCOPE_LOCK( mutex_ );
 
-    return proxy_->shutdown();
-}
+    if( !is_inited__() )
+        return false;
 
-void Dialer::on_ready( uint32 errorcode )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ready, this, errorcode ) ) ) );
-}
-void Dialer::on_error( uint32 call_id, uint32 errorcode )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_error, this, call_id, errorcode ) ) ) );
-}
-void Dialer::on_fatal_error( uint32 call_id, uint32 errorcode )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_fatal_error, this, call_id, errorcode ) ) ) );
-}
-void Dialer::on_dial( uint32 call_id )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_dial, this, call_id ) ) ) );
-}
-void Dialer::on_ring( uint32 call_id )
-{
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_ring, this, call_id ) ) ) );
+    return ServerBase::shutdown();
 }
 
-void Dialer::on_connect( uint32 call_id )
+void Dialer::handle( voip_service::VoipioInitiateCallResponse * r )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_connect, this, call_id ) ) ) );
+    dummy_log_debug( MODULENAME, "on_initiate_call_response: call id = %u, status = %u", r->call_id, r->status );
+
+    if( state_ != WAITING_VOIP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "on_initiate_call_response: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    call_id_    = r->call_id;
+
+    if( callback_ )
+        callback_->consume( create_initiate_call_response( r->call_id, r->status ) );
+
+    state_  = WAITING_DIALLING;
 }
 
-void Dialer::on_call_duration( uint32 call_id, uint32 t )
+void Dialer::handle( voip_service::VoipioDropResponse * r )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_duration, this, call_id, t ) ) ) );
+    dummy_log_debug( MODULENAME, "handle: VoipioDropResponse: call id = %u", r->call_id );
+
+    if( state_ != WAITING_DROP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "handle: VoipioDropResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( callback_ )
+        callback_->consume( create_message_t<DialerDropResponse>( r->call_id ) );
+
+    dummy_log_info( MODULENAME, "handle: VoipioDropResponse: switching to IDLE" );
+
+    state_      = IDLE;
+    call_id_    = 0;
 }
 
-void Dialer::on_play_start( uint32 call_id )
+void Dialer::handle( voip_service::VoipioError * r )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_start, this, call_id ) ) ) );
+    dummy_log_debug( MODULENAME, "on_error: %s", r->error.c_str() );
+
+    // private: no mutex lock
+
+    if( state_ == IDLE || state_ == WAITING_VOIP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "on_error: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( player_.is_playing() )
+        player_.stop();
+
+    if( callback_ )
+        callback_->consume( create_error( r->call_id, r->error ) );
+
+    dummy_log_info( MODULENAME, "on_error: switching to IDLE" );
+
+    state_      = IDLE;
+    call_id_    = 0;
+}
+void Dialer::handle( voip_service::VoipioFatalError * r )
+{
+    dummy_log_debug( MODULENAME, "on_fatal_error: %u", r->error.c_str() );
+
+    // private: no mutex lock
+
+    if( state_ == IDLE || state_ == WAITING_VOIP_RESPONSE )
+    {
+        dummy_log_warn( MODULENAME, "on_fatal_error: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( player_.is_playing() )
+        player_.stop();
+
+    if( callback_ )
+        callback_->consume( create_fatal_error( r->call_id, r->error ) );
+
+    dummy_log_info( MODULENAME, "on_fatal_error: switching to IDLE" );
+
+    state_      = IDLE;
+    call_id_    = 0;
+}
+void Dialer::handle( voip_service::VoipioDial * r )
+{
+    dummy_log_debug( MODULENAME, "on_dial: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != DIALLING && state_ != WAITING_DIALLING )
+    {
+        dummy_log_fatal( MODULENAME, "on_dial: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    if( state_ == DIALLING )
+    {
+        dummy_log_warn( MODULENAME, "on_dial: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    state_  = DIALLING;
+
+    if( callback_ )
+        callback_->consume( create_message_t<DialerDial>( r->call_id ) );
+}
+void Dialer::handle( voip_service::VoipioRing * r )
+{
+    dummy_log_debug( MODULENAME, "on_ring: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != RINGING && state_ != DIALLING )
+    {
+        dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    if( state_ == RINGING )
+    {
+        dummy_log_warn( MODULENAME, "on_ring: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( callback_ )
+        callback_->consume( create_message_t<DialerRing>( r->call_id ) );
+
+    state_  = RINGING;
 }
 
-void Dialer::on_play_stop( uint32 call_id )
+void Dialer::handle( voip_service::VoipioConnect * r )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_play_stop, this, call_id ) ) ) );
+    dummy_log_debug( MODULENAME, "on_connect: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != RINGING && state_ != DIALLING )
+    {
+        dummy_log_fatal( MODULENAME, "on_connect: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    if( state_ == DIALLING )
+    {
+        dummy_log_debug( MODULENAME, "on_connect: switching to CONNECTED ***** valid for PSTN calls *****" );
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    dummy_log_debug( MODULENAME, "on_connect: switching to CONNECTED" );
+
+    state_  = CONNECTED;
+
+    if( callback_ )
+        callback_->consume( create_message_t<DialerConnect>( r->call_id ) );
 }
 
-void Dialer::on_call_end( uint32 call_id, uint32 errorcode )
+void Dialer::handle( voip_service::VoipioCallDuration * r )
 {
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &DialerImpl::on_call_end, this, call_id, errorcode ) ) ) );
+    dummy_log_debug( MODULENAME, "on_call_duration: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "on_call_duration: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( callback_ )
+        callback_->consume( create_call_duration( r->call_id, r->t ) );
+}
+
+void Dialer::handle( voip_service::VoipioPlayStarted * r )
+{
+    dummy_log_debug( MODULENAME, "on_play_start: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    dummy_log_debug( MODULENAME, "on_play_start: ok" );
+
+    player_.on_play_start( r->call_id );
+}
+
+void Dialer::handle( voip_service::VoipioPlayStopped * r )
+{
+    dummy_log_debug( MODULENAME, "on_play_stop: %u", r->call_id );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    dummy_log_debug( MODULENAME, "on_play_stop: ok" );
+
+    player_.on_play_stop( r->call_id );
+}
+
+
+void Dialer::handle( voip_service::VoipioCallEnd * r )
+{
+    dummy_log_debug( MODULENAME, "on_call_end: %u %u", r->call_id, r->errorcode );
+
+    // private: no mutex lock
+
+    if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( r->call_id ) );
+
+    if( player_.is_playing() )
+        player_.stop();
+
+    if( callback_ )
+        callback_->consume( create_call_end( r->call_id, r->errorcode ) );
+
+    dummy_log_info( MODULENAME, "on_call_end: switching to IDLE" );
+
+    state_      = IDLE;
+    call_id_    = 0;
+}
+
+bool Dialer::is_call_id_valid( uint32 call_id ) const
+{
+    return call_id == call_id_;
 }
 
 

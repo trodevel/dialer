@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1278 2014-12-23 18:23:45Z serge $
+// $Id: object_factory.h 1292 2014-12-30 19:05:34Z serge $
 
 #ifndef DIALER_OBJECT_FACTORY_H
 #define DIALER_OBJECT_FACTORY_H
@@ -48,6 +48,27 @@ _T *create_message_t( uint32 call_id )
 
     return res;
 }
+
+inline DialerInitiateCallRequest *create_initiate_call_request( const std::string & party )
+{
+    DialerInitiateCallRequest *res = new DialerInitiateCallRequest;
+
+    res->party      = party;
+
+    return res;
+}
+
+inline DialerPlayFile *create_play_file( uint32 call_id, const std::string & filename )
+{
+    DialerPlayFile *res = new DialerPlayFile;
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
+
 
 inline DialerErrorResponse *create_error_response( uint32 errorcode, const std::string & descr )
 {

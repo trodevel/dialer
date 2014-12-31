@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1234 2014-11-25 19:24:30Z serge $
+// $Id: dialer.h 1290 2014-12-30 18:17:41Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -28,11 +28,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread.hpp>         // boost::mutex
 #include "../utils/types.h"         // uint32
 
-#include "../voip_io/i_voip_service_callback.h"    // IVoipServiceCallback
-#include "../threcon/i_controllable.h"      // IControllable
+#include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
+#include "../voip_io/objects.h"                     // VoipioInitiateCallResponse
+#include "../threcon/i_controllable.h"              // IControllable
+#include "../servt/server_t.h"      // ServerT
+#include "objects.h"                // DialerObject
 #include "i_dialer.h"               // IDialer
 #include "i_dialer_callback.h"      // IDialerCallback
-#include "dialer_impl.h"            // DialerImpl
+#include "player_sm.h"              // PlayerSM
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -46,16 +49,33 @@ namespace voip_service
 class IVoipService;
 }
 
-namespace asyncp
-{
-class AsyncProxy;
-}
-
 NAMESPACE_DIALER_START
 
+class Dialer;
 
-class Dialer: public DialerImpl, virtual public IDialer, virtual public voip_service::IVoipServiceCallback, public virtual threcon::IControllable
+typedef servt::ServerT< const servt::IObject*, Dialer> ServerBase;
+
+class Dialer:
+        public ServerBase,
+        virtual public IDialer,
+        virtual public voip_service::IVoipServiceCallback,
+        virtual public threcon::IControllable
 {
+    friend ServerBase;
+
+public:
+    enum state_e
+    {
+        UNKNOWN = 0,
+        IDLE,
+        WAITING_VOIP_RESPONSE,
+        WAITING_DIALLING,
+        DIALLING,
+        RINGING,
+        CONNECTED,
+        WAITING_DROP_RESPONSE,
+    };
+
 public:
     Dialer();
     ~Dialer();
@@ -64,36 +84,58 @@ public:
             voip_service::IVoipService  * voips,
             sched::IScheduler           * sched );
 
-    void thread_func();
-
     bool register_callback( IDialerCallback * callback );
 
     bool is_inited() const;
 
-    // interface IDialer
-    virtual void initiate_call( const std::string & party );
-    virtual void drop( uint32 call_id );
-    virtual void set_input_file( uint32 call_id, const std::string & filename );
-    virtual void set_output_file( uint32 call_id, const std::string & filename );
+    state_e get_state() const;
 
-    // interface IControllable
-    virtual bool shutdown();
+    // interface IDialer
+    void consume( const DialerObject * req );
 
     // interface IVoipServiceCallback
-    virtual void on_ready( uint32 errorcode );
-    virtual void on_error( uint32 call_id, uint32 errorcode );
-    virtual void on_fatal_error( uint32 call_id, uint32 errorcode );
-    virtual void on_call_end( uint32 call_id, uint32 errorcode );
-    virtual void on_dial( uint32 call_id );
-    virtual void on_ring( uint32 call_id );
-    virtual void on_connect( uint32 call_id );
-    virtual void on_call_duration( uint32 call_id, uint32 t );
-    virtual void on_play_start( uint32 call_id );
-    virtual void on_play_stop( uint32 call_id );
+    virtual void consume( const voip_service::VoipioCallbackObject * req );
+
+    // interface IControllable
+    bool shutdown();
+
 
 private:
+    void handle( const servt::IObject* req );
 
-    asyncp::AsyncProxy          * proxy_;
+    // for interface IDialer
+    void handle( const DialerInitiateCallRequest * req );
+    void handle( const DialerDrop * req );
+    void handle( const DialerPlayFile * req );
+    void handle( const DialerRecordFile * req );
+
+    // for interface IVoipServiceCallback
+    void handle( voip_service::VoipioInitiateCallResponse * r );
+    void handle( voip_service::VoipioDropResponse * r );
+    void handle( voip_service::VoipioError * r );
+    void handle( voip_service::VoipioFatalError * r );
+    void handle( voip_service::VoipioCallEnd * r );
+    void handle( voip_service::VoipioDial * r );
+    void handle( voip_service::VoipioRing * r );
+    void handle( voip_service::VoipioConnect * r );
+    void handle( voip_service::VoipioCallDuration * r );
+    void handle( voip_service::VoipioPlayStarted * r );
+    void handle( voip_service::VoipioPlayStopped * r );
+
+    bool is_inited__() const;
+    bool is_call_id_valid( uint32 call_id ) const;
+
+private:
+    mutable boost::mutex        mutex_;
+
+    state_e                     state_;
+
+    voip_service::IVoipService  * voips_;
+    sched::IScheduler           * sched_;
+    IDialerCallback             * callback_;
+
+    uint32                      call_id_;
+    PlayerSM                    player_;
 };
 
 NAMESPACE_DIALER_END

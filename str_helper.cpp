@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.cpp 1288 2014-12-29 18:18:07Z serge $
+// $Id: str_helper.cpp 1290 2014-12-30 18:17:41Z serge $
 
 #include "str_helper.h"             // self
 
@@ -31,20 +31,20 @@ NAMESPACE_DIALER_START
 
 #define MAP_INSERT_VAL( _m, _val )      _m.insert( Map::value_type( _val ) )
 
-std::string StrHelper::to_string( const DialerImpl::state_e & l )
+std::string StrHelper::to_string( const Dialer::state_e & l )
 {
-    typedef std::map< DialerImpl::state_e, std::string > Map;
+    typedef std::map< Dialer::state_e, std::string > Map;
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( UNKNOWN ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( IDLE ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( WAITING_VOIP_RESPONSE ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( WAITING_DIALLING ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( DIALLING ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( RINGING ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( CONNECTED ) );
-        MAP_INSERT_VAL( m, DialerImpl:: TUPLE_VAL_STR( WAITING_DROP_RESPONSE ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( UNKNOWN ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( IDLE ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_VOIP_RESPONSE ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DIALLING ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( DIALLING ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( RINGING ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( CONNECTED ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DROP_RESPONSE ) );
     }
 
     if( 0 == m.count( l ) )

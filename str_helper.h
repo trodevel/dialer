@@ -19,10 +19,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.h 1234 2014-11-25 19:24:30Z serge $
+// $Id: str_helper.h 1290 2014-12-30 18:17:41Z serge $
 
 #include "namespace_lib.h"      // NAMESPACE_DIALER_START
-#include "dialer_impl.h"        // enums
+#include "dialer.h"             // enums
 #include "player_sm.h"          // enums
 
 NAMESPACE_DIALER_START
@@ -30,7 +30,7 @@ NAMESPACE_DIALER_START
 class StrHelper
 {
 public:
-    static std::string to_string( const DialerImpl::state_e & l );
+    static std::string to_string( const Dialer::state_e & l );
     static std::string to_string( const PlayerSM::state_e & l );
 };
 
