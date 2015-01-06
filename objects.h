@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1288 2014-12-29 18:18:07Z serge $
+// $Id: objects.h 1311 2015-01-05 17:23:45Z serge $
 
 #ifndef DIALER_OBJECTS_H
 #define DIALER_OBJECTS_H
@@ -114,7 +114,8 @@ struct DialerCallDuration: public DialerCallbackCallObject
 
 struct DialerCallEnd: public DialerCallbackCallObject
 {
-    uint32 errorcode;
+    uint32          errorcode;
+    std::string     descr;
 };
 
 struct DialerPlayStarted: public DialerCallbackCallObject
@@ -123,16 +124,6 @@ struct DialerPlayStarted: public DialerCallbackCallObject
 
 struct DialerPlayStopped: public DialerCallbackCallObject
 {
-};
-
-struct DialerError: public DialerCallbackCallObject
-{
-    std::string     error;
-};
-
-struct DialerFatalError: public DialerCallbackCallObject
-{
-    std::string     error;
 };
 
 NAMESPACE_DIALER_END

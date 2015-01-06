@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1291 2014-12-30 18:20:37Z serge $
+// $Id: dialer.cpp 1311 2015-01-05 17:23:45Z serge $
 
 #include "dialer.h"                     // self
 
@@ -347,7 +347,7 @@ void Dialer::handle( voip_service::VoipioError * r )
         player_.stop();
 
     if( callback_ )
-        callback_->consume( create_error( r->call_id, r->error ) );
+        callback_->consume( create_call_end( r->call_id, 1, r->error ) );
 
     dummy_log_info( MODULENAME, "on_error: switching to IDLE" );
 
@@ -373,7 +373,7 @@ void Dialer::handle( voip_service::VoipioFatalError * r )
         player_.stop();
 
     if( callback_ )
-        callback_->consume( create_fatal_error( r->call_id, r->error ) );
+        callback_->consume( create_call_end( r->call_id, 2, r->error ) );
 
     dummy_log_info( MODULENAME, "on_fatal_error: switching to IDLE" );
 
@@ -539,7 +539,7 @@ void Dialer::handle( voip_service::VoipioCallEnd * r )
         player_.stop();
 
     if( callback_ )
-        callback_->consume( create_call_end( r->call_id, r->errorcode ) );
+        callback_->consume( create_call_end( r->call_id, r->errorcode, "normal ending" ) );
 
     dummy_log_info( MODULENAME, "on_call_end: switching to IDLE" );
 
