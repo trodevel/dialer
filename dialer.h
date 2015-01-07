@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1290 2014-12-30 18:17:41Z serge $
+// $Id: dialer.h 1321 2015-01-06 17:51:56Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -34,7 +34,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../servt/server_t.h"      // ServerT
 #include "objects.h"                // DialerObject
 #include "i_dialer.h"               // IDialer
-#include "i_dialer_callback.h"      // IDialerCallback
 #include "player_sm.h"              // PlayerSM
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
@@ -51,6 +50,7 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
+class IDialerCallback;
 class Dialer;
 
 typedef servt::ServerT< const servt::IObject*, Dialer> ServerBase;

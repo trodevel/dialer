@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: player_sm.h 1143 2014-10-13 17:32:30Z serge $
+// $Id: player_sm.h 1324 2015-01-06 18:02:57Z serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -44,6 +44,8 @@ class IVoipService;
 
 NAMESPACE_DIALER_START
 
+class IDialerCallback;
+
 class PlayerSM
 {
 public:
@@ -61,10 +63,12 @@ public:
 
     bool init( voip_service::IVoipService  * voips, sched::IScheduler * sched );
 
+    bool register_callback( IDialerCallback * callback );
+
     bool is_inited() const;
 
     // IPlayerSM
-    bool play_file( uint32 call_id, const std::string & filename );
+    void play_file( uint32 call_id, const std::string & filename );
     void stop();
     bool is_playing() const;
 
@@ -84,6 +88,7 @@ private:
 
     voip_service::IVoipService  * voips_;
     sched::IScheduler           * sched_;
+    IDialerCallback             * callback_;
 
     //boost::shared_ptr<sched::IOneTimeJob>     job_;
     sched::IOneTimeJob             * job_;

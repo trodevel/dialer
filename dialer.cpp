@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1311 2015-01-05 17:23:45Z serge $
+// $Id: dialer.cpp 1321 2015-01-06 17:51:56Z serge $
 
 #include "dialer.h"                     // self
 
@@ -28,6 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "str_helper.h"                 // StrHelper
 #include "object_factory.h"             // create_error_response
+#include "i_dialer_callback.h"          // IDialerCallback
 
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
@@ -77,6 +78,8 @@ bool Dialer::register_callback( IDialerCallback * callback )
         return false;
 
     callback_ = callback;
+
+    player_.register_callback( callback );
 
     return true;
 }
