@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1321 2015-01-06 17:51:56Z serge $
+// $Id: dialer.cpp 1356 2015-01-08 19:43:45Z serge $
 
 #include "dialer.h"                     // self
 
@@ -62,7 +62,7 @@ bool Dialer::init(
 
     voips_      = voips;
     sched_      = sched;
-    //state_  = IDLE;
+    state_      = IDLE;
 
     return true;
 }
@@ -206,6 +206,8 @@ void Dialer::handle( const DialerInitiateCallRequest * req )
 
     voips_->consume( voip_service::create_initiate_call_request( req->party ) );
 
+    dummy_log_info( MODULENAME, "initiate_call: switching to WAITING_VOIP_RESPONSE" );
+
     state_  = WAITING_VOIP_RESPONSE;
 }
 
@@ -247,12 +249,7 @@ void Dialer::handle( const DialerPlayFile * req )
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    bool b = player_.play_file( req->call_id, req->filename );
-
-    if( b == false )
-    {
-        dummy_log_error( MODULENAME, "set_input_file: player failed" );
-    }
+    player_.play_file( req->call_id, req->filename );
 }
 
 void Dialer::handle( const DialerRecordFile * req )
