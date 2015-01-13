@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1321 2015-01-06 17:51:56Z serge $
+// $Id: dialer.h 1366 2015-01-12 18:01:41Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -110,17 +110,17 @@ private:
     void handle( const DialerRecordFile * req );
 
     // for interface IVoipServiceCallback
-    void handle( voip_service::VoipioInitiateCallResponse * r );
-    void handle( voip_service::VoipioDropResponse * r );
-    void handle( voip_service::VoipioError * r );
-    void handle( voip_service::VoipioFatalError * r );
-    void handle( voip_service::VoipioCallEnd * r );
-    void handle( voip_service::VoipioDial * r );
-    void handle( voip_service::VoipioRing * r );
-    void handle( voip_service::VoipioConnect * r );
-    void handle( voip_service::VoipioCallDuration * r );
-    void handle( voip_service::VoipioPlayStarted * r );
-    void handle( voip_service::VoipioPlayStopped * r );
+    void handle( const voip_service::VoipioInitiateCallResponse * r );
+    void handle( const voip_service::VoipioDropResponse * r );
+    void handle( const voip_service::VoipioError * r );
+    void handle( const voip_service::VoipioFatalError * r );
+    void handle( const voip_service::VoipioCallEnd * r );
+    void handle( const voip_service::VoipioDial * r );
+    void handle( const voip_service::VoipioRing * r );
+    void handle( const voip_service::VoipioConnect * r );
+    void handle( const voip_service::VoipioCallDuration * r );
+    void handle( const voip_service::VoipioPlayStarted * r );
+    void handle( const voip_service::VoipioPlayStopped * r );
 
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1356 2015-01-08 19:43:45Z serge $
+// $Id: dialer.cpp 1368 2015-01-12 18:26:57Z serge $
 
 #include "dialer.h"                     // self
 
@@ -287,7 +287,7 @@ bool Dialer::shutdown()
     return ServerBase::shutdown();
 }
 
-void Dialer::handle( voip_service::VoipioInitiateCallResponse * r )
+void Dialer::handle( const voip_service::VoipioInitiateCallResponse * r )
 {
     dummy_log_debug( MODULENAME, "on_initiate_call_response: call id = %u, status = %u", r->call_id, r->status );
 
@@ -306,7 +306,7 @@ void Dialer::handle( voip_service::VoipioInitiateCallResponse * r )
     state_  = WAITING_DIALLING;
 }
 
-void Dialer::handle( voip_service::VoipioDropResponse * r )
+void Dialer::handle( const voip_service::VoipioDropResponse * r )
 {
     dummy_log_debug( MODULENAME, "handle: VoipioDropResponse: call id = %u", r->call_id );
 
@@ -328,7 +328,7 @@ void Dialer::handle( voip_service::VoipioDropResponse * r )
     call_id_    = 0;
 }
 
-void Dialer::handle( voip_service::VoipioError * r )
+void Dialer::handle( const voip_service::VoipioError * r )
 {
     dummy_log_debug( MODULENAME, "on_error: %s", r->error.c_str() );
 
@@ -354,9 +354,9 @@ void Dialer::handle( voip_service::VoipioError * r )
     state_      = IDLE;
     call_id_    = 0;
 }
-void Dialer::handle( voip_service::VoipioFatalError * r )
+void Dialer::handle( const voip_service::VoipioFatalError * r )
 {
-    dummy_log_debug( MODULENAME, "on_fatal_error: %u", r->error.c_str() );
+    dummy_log_debug( MODULENAME, "on_fatal_error: %s", r->error.c_str() );
 
     // private: no mutex lock
 
@@ -380,7 +380,7 @@ void Dialer::handle( voip_service::VoipioFatalError * r )
     state_      = IDLE;
     call_id_    = 0;
 }
-void Dialer::handle( voip_service::VoipioDial * r )
+void Dialer::handle( const voip_service::VoipioDial * r )
 {
     dummy_log_debug( MODULENAME, "on_dial: %u", r->call_id );
 
@@ -405,7 +405,7 @@ void Dialer::handle( voip_service::VoipioDial * r )
     if( callback_ )
         callback_->consume( create_message_t<DialerDial>( r->call_id ) );
 }
-void Dialer::handle( voip_service::VoipioRing * r )
+void Dialer::handle( const voip_service::VoipioRing * r )
 {
     dummy_log_debug( MODULENAME, "on_ring: %u", r->call_id );
 
@@ -432,7 +432,7 @@ void Dialer::handle( voip_service::VoipioRing * r )
     state_  = RINGING;
 }
 
-void Dialer::handle( voip_service::VoipioConnect * r )
+void Dialer::handle( const voip_service::VoipioConnect * r )
 {
     dummy_log_debug( MODULENAME, "on_connect: %u", r->call_id );
 
@@ -460,7 +460,7 @@ void Dialer::handle( voip_service::VoipioConnect * r )
         callback_->consume( create_message_t<DialerConnect>( r->call_id ) );
 }
 
-void Dialer::handle( voip_service::VoipioCallDuration * r )
+void Dialer::handle( const voip_service::VoipioCallDuration * r )
 {
     dummy_log_debug( MODULENAME, "on_call_duration: %u", r->call_id );
 
@@ -479,7 +479,7 @@ void Dialer::handle( voip_service::VoipioCallDuration * r )
         callback_->consume( create_call_duration( r->call_id, r->t ) );
 }
 
-void Dialer::handle( voip_service::VoipioPlayStarted * r )
+void Dialer::handle( const voip_service::VoipioPlayStarted * r )
 {
     dummy_log_debug( MODULENAME, "on_play_start: %u", r->call_id );
 
@@ -499,7 +499,7 @@ void Dialer::handle( voip_service::VoipioPlayStarted * r )
     player_.on_play_start( r->call_id );
 }
 
-void Dialer::handle( voip_service::VoipioPlayStopped * r )
+void Dialer::handle( const voip_service::VoipioPlayStopped * r )
 {
     dummy_log_debug( MODULENAME, "on_play_stop: %u", r->call_id );
 
@@ -520,7 +520,7 @@ void Dialer::handle( voip_service::VoipioPlayStopped * r )
 }
 
 
-void Dialer::handle( voip_service::VoipioCallEnd * r )
+void Dialer::handle( const voip_service::VoipioCallEnd * r )
 {
     dummy_log_debug( MODULENAME, "on_call_end: %u %u", r->call_id, r->errorcode );
 
