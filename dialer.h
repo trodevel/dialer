@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.h 1366 2015-01-12 18:01:41Z serge $
+// $Id: dialer.h 1374 2015-01-13 18:26:48Z serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -68,7 +68,7 @@ public:
     {
         UNKNOWN = 0,
         IDLE,
-        WAITING_VOIP_RESPONSE,
+        WAITING_INITIATE_CALL_RESPONSE,
         WAITING_DIALLING,
         DIALLING,
         RINGING,
@@ -111,9 +111,9 @@ private:
 
     // for interface IVoipServiceCallback
     void handle( const voip_service::VoipioInitiateCallResponse * r );
+    void handle( const voip_service::VoipioErrorResponse * r );
     void handle( const voip_service::VoipioDropResponse * r );
-    void handle( const voip_service::VoipioError * r );
-    void handle( const voip_service::VoipioFatalError * r );
+    void handle( const voip_service::VoipioCallErrorResponse * r );
     void handle( const voip_service::VoipioCallEnd * r );
     void handle( const voip_service::VoipioDial * r );
     void handle( const voip_service::VoipioRing * r );
