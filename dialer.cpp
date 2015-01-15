@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: dialer.cpp 1383 2015-01-13 19:48:28Z serge $
+// $Id: dialer.cpp 1387 2015-01-14 18:32:26Z serge $
 
 #include "dialer.h"                     // self
 
@@ -513,7 +513,7 @@ void Dialer::handle( const voip_service::VoipioCallEnd * r )
 
     // private: no mutex lock
 
-    if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED )
+    if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED && state_ != WAITING_DROP_RESPONSE )
     {
         dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
@@ -525,8 +525,16 @@ void Dialer::handle( const voip_service::VoipioCallEnd * r )
     if( player_.is_playing() )
         player_.stop();
 
-    if( callback_ )
-        callback_->consume( create_call_end( r->call_id, r->errorcode, r->descr ) );
+    if( state_ == WAITING_DROP_RESPONSE )
+    {
+        if( callback_ )
+            callback_->consume( create_message_t<DialerDropResponse>( r->call_id ) );
+    }
+    else
+    {
+        if( callback_ )
+            callback_->consume( create_call_end( r->call_id, r->errorcode, r->descr ) );
+    }
 
     state_      = IDLE;
     call_id_    = 0;
