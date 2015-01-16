@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: str_helper.h 1290 2014-12-30 18:17:41Z serge $
+// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
 
 #include "namespace_lib.h"      // NAMESPACE_DIALER_START
 #include "dialer.h"             // enums

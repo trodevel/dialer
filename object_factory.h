@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1311 2015-01-05 17:23:45Z serge $
+// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
 
 #ifndef DIALER_OBJECT_FACTORY_H
 #define DIALER_OBJECT_FACTORY_H

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: namespace_lib.h 742 2014-07-11 16:57:13Z serge $
+// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
 
 #ifndef NAMESPACE_DIALER_H
 #define NAMESPACE_DIALER_H
