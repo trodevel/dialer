@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1495 $ $Date:: 2015-02-18 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -201,7 +201,7 @@ void Dialer::handle( const DialerInitiateCallRequest * req )
         dummy_log_warn( MODULENAME, "initiate_call: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
 
         if( callback_ )
-            callback_->consume( create_error_response( 0, "busy, cannot proceed in state " + StrHelper::to_string( state_ ) ) );
+            callback_->consume( create_reject_response( 0, "busy, cannot proceed in state " + StrHelper::to_string( state_ ) ) );
 
         return;
     }
