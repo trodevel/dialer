@@ -19,13 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
 
 #include <string>                   // std::string
-#include <boost/thread.hpp>         // boost::mutex
+#include <mutex>                    // std::mutex
 #include "../utils/types.h"         // uint32
 
 #include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
@@ -126,7 +126,7 @@ private:
     bool is_call_id_valid( uint32 call_id ) const;
 
 private:
-    mutable boost::mutex        mutex_;
+    mutable std::mutex         mutex_;
 
     state_e                     state_;
 

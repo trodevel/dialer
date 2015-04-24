@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -27,8 +27,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <string>                   // std::string
 #include "../utils/types.h"         // uint32
 
-#include <boost/shared_ptr.hpp>     // boost::shared_ptr
-#include <boost/thread.hpp>         // boost::mutex
+#include <mutex>                    // std::mutex
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
 namespace sched
@@ -82,7 +81,7 @@ public:
 private:
 
 private:
-    mutable boost::mutex        mutex_;
+    mutable std::mutex         mutex_;
 
     state_e                     state_;
 
@@ -90,7 +89,7 @@ private:
     sched::IScheduler           * sched_;
     IDialerCallback             * callback_;
 
-    //boost::shared_ptr<sched::IOneTimeJob>     job_;
+    //std::shared_ptr<sched::IOneTimeJob>     job_;
     sched::IOneTimeJob             * job_;
 };
 

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -28,7 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../voip_io/i_voip_service.h"  // IVoipService
 #include "../voip_io/object_factory.h"  // voip_service::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
 #include "object_factory.h"             // create_message_t
@@ -79,7 +79,7 @@ bool PlayerSM::register_callback( IDialerCallback * callback )
     if( callback == 0L )
         return false;
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( callback_ != 0L )
         return false;
@@ -100,7 +100,7 @@ bool PlayerSM::is_inited() const
 
 void PlayerSM::play_file( uint32 call_id, const std::string & filename )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != IDLE )
     {
@@ -135,7 +135,7 @@ void PlayerSM::stop()
 {
     dummy_log_debug( MODULENAME, "stop" );
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != WAITING && state_ != PLAYING )
     {
@@ -153,7 +153,7 @@ void PlayerSM::stop()
 
 bool PlayerSM::is_playing() const
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     return state_ == PLAYING;
 }
@@ -162,7 +162,7 @@ void PlayerSM::on_play_start( uint32 call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_start: %u", call_id );
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != WAITING )
     {
@@ -184,7 +184,7 @@ void PlayerSM::on_play_stop( uint32 call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_stop: %u", call_id );
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != PLAYING )
     {
@@ -204,7 +204,7 @@ void PlayerSM::on_play_failed( uint32 call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_failed: %u", call_id );
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != WAITING )
     {

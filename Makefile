@@ -9,19 +9,6 @@ MODE ?= debug
 
 ###################################################################
 
-BOOST_PATH := $(shell echo $$BOOST_PATH)
-
-ifeq (,$(BOOST_PATH))
-    $(error 'please define path to boost $$BOOST_PATH')
-endif
-
-###################################################################
-
-BOOST_INC=$(BOOST_PATH)
-BOOST_LIB=$(BOOST_PATH)/stage/lib
-
-###################################################################
-
 LIBNAME=libdialer
 
 ###################################################################
@@ -59,7 +46,7 @@ CC=gcc
 
 LDSHARED=gcc
 CPP=gcc -E
-INCL = -I$(BOOST_INC) -I.
+INCL = -I.
 
 
 STATICLIB=$(LIBNAME).a

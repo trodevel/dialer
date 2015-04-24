@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1495 $ $Date:: 2015-02-18 #$ $Author: serge $
+// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -30,7 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "object_factory.h"             // create_error_response
 #include "i_dialer_callback.h"          // IDialerCallback
 
-#include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
 
 #include "namespace_lib.h"              // NAMESPACE_DIALER_START
@@ -55,7 +55,7 @@ bool Dialer::init(
         voip_service::IVoipService  * voips,
         sched::IScheduler           * sched )
 {
-	SCOPE_LOCK( mutex_ );
+	MUTEX_SCOPE_LOCK( mutex_ );
 
     if( !voips || !sched )
         return false;
@@ -74,7 +74,7 @@ bool Dialer::register_callback( IDialerCallback * callback )
     if( callback == 0L )
         return false;
 
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( callback_ != 0L )
         return false;
@@ -88,7 +88,7 @@ bool Dialer::register_callback( IDialerCallback * callback )
 
 bool Dialer::is_inited() const
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     return is_inited__();
 }
@@ -103,7 +103,7 @@ bool Dialer::is_inited__() const
 
 Dialer::state_e Dialer::get_state() const
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     return state_;
 }
@@ -121,7 +121,7 @@ void Dialer::consume( const voip_service::VoipioCallbackObject * req )
 
 void Dialer::handle( const servt::IObject* req )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     ASSERT( is_inited__() );
 
@@ -281,7 +281,7 @@ void Dialer::handle( const DialerRecordFile * req )
 
 bool Dialer::shutdown()
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( !is_inited__() )
         return false;
