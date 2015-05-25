@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
+// $Revision: 1768 $ $Date:: 2015-05-21 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -281,12 +281,16 @@ void Dialer::handle( const DialerRecordFile * req )
 
 bool Dialer::shutdown()
 {
+    dummy_log_debug( MODULENAME, "shutdown()" );
+
     MUTEX_SCOPE_LOCK( mutex_ );
 
     if( !is_inited__() )
         return false;
 
-    return ServerBase::shutdown();
+    bool b = ServerBase::shutdown();
+
+    return b;
 }
 
 void Dialer::handle( const voip_service::VoipioInitiateCallResponse * r )
