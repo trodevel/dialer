@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1768 $ $Date:: 2015-05-21 #$ $Author: serge $
+// $Revision: 1784 $ $Date:: 2015-05-29 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -133,6 +133,10 @@ void Dialer::handle( const servt::IObject* req )
     {
         handle( dynamic_cast< const DialerPlayFile *>( req ) );
     }
+    else if( typeid( *req ) == typeid( DialerRecordFile ) )
+    {
+        handle( dynamic_cast< const DialerRecordFile *>( req ) );
+    }
     else if( typeid( *req ) == typeid( DialerDrop ) )
     {
         handle( dynamic_cast< const DialerDrop *>( req ) );
@@ -194,11 +198,11 @@ void Dialer::handle( const servt::IObject* req )
 
 void Dialer::handle( const DialerInitiateCallRequest * req )
 {
-    dummy_log_debug( MODULENAME, "initiate_call: %s", req->party.c_str() );
+    dummy_log_debug( MODULENAME, "handle DialerInitiateCallRequest: %s", req->party.c_str() );
 
     if( state_ != IDLE )
     {
-        dummy_log_warn( MODULENAME, "initiate_call: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "handle DialerInitiateCallRequest: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
 
         if( callback_ )
             callback_->consume( create_reject_response( 0, "busy, cannot proceed in state " + StrHelper::to_string( state_ ) ) );
@@ -215,13 +219,13 @@ void Dialer::handle( const DialerInitiateCallRequest * req )
 
 void Dialer::handle( const DialerDrop * req )
 {
-    dummy_log_debug( MODULENAME, "drop" );
+    dummy_log_debug( MODULENAME, "handle DialerDrop" );
 
     // private: no mutex lock
 
     if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "drop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle DialerDrop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -238,13 +242,13 @@ void Dialer::handle( const DialerDrop * req )
 
 void Dialer::handle( const DialerPlayFile * req )
 {
-    dummy_log_debug( MODULENAME, "set_input_file" );
+    dummy_log_debug( MODULENAME, "handle DialerPlayFile" );
 
     // private: no mutex lock
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "set_input_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle DialerPlayFile: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -256,13 +260,13 @@ void Dialer::handle( const DialerPlayFile * req )
 
 void Dialer::handle( const DialerRecordFile * req )
 {
-    dummy_log_debug( MODULENAME, "set_output_file" );
+    dummy_log_debug( MODULENAME, "handle DialerRecordFile" );
 
     // private: no mutex lock
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "set_output_file: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle DialerRecordFile: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -275,7 +279,7 @@ void Dialer::handle( const DialerRecordFile * req )
 
     if( b == false )
     {
-        dummy_log_error( MODULENAME, "set_output_file: voip service failed" );
+        dummy_log_error( MODULENAME, "handle DialerRecordFile: voip service failed" );
     }
 }
 
@@ -316,13 +320,13 @@ void Dialer::handle( const voip_service::VoipioInitiateCallResponse * r )
 
 void Dialer::handle( const voip_service::VoipioErrorResponse * r )
 {
-    dummy_log_debug( MODULENAME, "handle: VoipioErrorResponse: %s", r->descr.c_str() );
+    dummy_log_debug( MODULENAME, "handle VoipioErrorResponse: %s", r->descr.c_str() );
 
     // private: no mutex lock
 
     if( state_ != WAITING_INITIATE_CALL_RESPONSE )
     {
-        dummy_log_fatal( MODULENAME, "handle: VoipioErrorResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioErrorResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -340,11 +344,11 @@ void Dialer::handle( const voip_service::VoipioErrorResponse * r )
 
 void Dialer::handle( const voip_service::VoipioDropResponse * r )
 {
-    dummy_log_debug( MODULENAME, "handle: VoipioDropResponse: call id = %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioDropResponse: call id = %u", r->call_id );
 
     if( state_ != WAITING_DROP_RESPONSE )
     {
-        dummy_log_warn( MODULENAME, "handle: VoipioDropResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "handle VoipioDropResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -396,20 +400,20 @@ void Dialer::handle( const voip_service::VoipioDial * r )
 }
 void Dialer::handle( const voip_service::VoipioRing * r )
 {
-    dummy_log_debug( MODULENAME, "on_ring: %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioRing: %u", r->call_id );
 
     // private: no mutex lock
 
     if( state_ != RINGING && state_ != DIALLING )
     {
-        dummy_log_fatal( MODULENAME, "on_ring: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioRing: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
 
     if( state_ == RINGING )
     {
-        dummy_log_warn( MODULENAME, "on_ring: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "handle VoipioRing: ignored in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
     }
 
@@ -425,20 +429,20 @@ void Dialer::handle( const voip_service::VoipioRing * r )
 
 void Dialer::handle( const voip_service::VoipioConnect * r )
 {
-    dummy_log_debug( MODULENAME, "on_connect: %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioConnect: %u", r->call_id );
 
     // private: no mutex lock
 
     if( state_ != RINGING && state_ != DIALLING )
     {
-        dummy_log_fatal( MODULENAME, "on_connect: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioConnect: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
 
     if( state_ == DIALLING )
     {
-        dummy_log_debug( MODULENAME, "on_connect: switching to CONNECTED ***** valid for PSTN calls *****" );
+        dummy_log_debug( MODULENAME, "handle VoipioConnect: switching to CONNECTED ***** valid for PSTN calls *****" );
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
@@ -453,13 +457,19 @@ void Dialer::handle( const voip_service::VoipioConnect * r )
 
 void Dialer::handle( const voip_service::VoipioCallDuration * r )
 {
-    dummy_log_debug( MODULENAME, "on_call_duration: %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioCallDuration: %u", r->call_id );
 
     // private: no mutex lock
 
-    if( state_ != CONNECTED )
+    if( state_ == IDLE )
     {
-        dummy_log_fatal( MODULENAME, "on_call_duration: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_warn( MODULENAME, "handle VoipioCallDuration: out-of-order, unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        return;
+    }
+    else if( state_ != CONNECTED )
+    {
+        dummy_log_fatal( MODULENAME, "handle VoipioCallDuration: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
@@ -472,40 +482,40 @@ void Dialer::handle( const voip_service::VoipioCallDuration * r )
 
 void Dialer::handle( const voip_service::VoipioPlayStarted * r )
 {
-    dummy_log_debug( MODULENAME, "on_play_start: %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioPlayStarted: %u", r->call_id );
 
     // private: no mutex lock
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioPlayStarted: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
 
-    dummy_log_debug( MODULENAME, "on_play_start: ok" );
+    dummy_log_debug( MODULENAME, "handle VoipioPlayStarted: ok" );
 
     player_.on_play_start( r->call_id );
 }
 
 void Dialer::handle( const voip_service::VoipioPlayStopped * r )
 {
-    dummy_log_debug( MODULENAME, "on_play_stop: %u", r->call_id );
+    dummy_log_debug( MODULENAME, "handle VoipioPlayStop: %u", r->call_id );
 
     // private: no mutex lock
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioPlayStop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }
 
     ASSERT( is_call_id_valid( r->call_id ) );
 
-    dummy_log_debug( MODULENAME, "on_play_stop: ok" );
+    dummy_log_debug( MODULENAME, "handle VoipioPlayStop: ok" );
 
     player_.on_play_stop( r->call_id );
 }
@@ -513,13 +523,13 @@ void Dialer::handle( const voip_service::VoipioPlayStopped * r )
 
 void Dialer::handle( const voip_service::VoipioCallEnd * r )
 {
-    dummy_log_debug( MODULENAME, "on_call_end: %u %u '%s'", r->call_id, r->errorcode, r->descr.c_str() );
+    dummy_log_debug( MODULENAME, "handle VoipioCallEnd: %u %u '%s'", r->call_id, r->errorcode, r->descr.c_str() );
 
     // private: no mutex lock
 
     if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED && state_ != WAITING_DROP_RESPONSE )
     {
-        dummy_log_fatal( MODULENAME, "on_call_end: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        dummy_log_fatal( MODULENAME, "handle VoipioCallEnd: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
         return;
     }

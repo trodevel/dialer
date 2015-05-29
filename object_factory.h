@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1778 $ $Date:: 2015-05-29 #$ $Author: serge $
 
 #ifndef DIALER_OBJECT_FACTORY_H
 #define DIALER_OBJECT_FACTORY_H
@@ -61,6 +61,16 @@ inline DialerInitiateCallRequest *create_initiate_call_request( const std::strin
 inline DialerPlayFile *create_play_file( uint32 call_id, const std::string & filename )
 {
     DialerPlayFile *res = new DialerPlayFile;
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
+inline DialerRecordFile *create_record_file( uint32 call_id, const std::string & filename )
+{
+    DialerRecordFile *res = new DialerRecordFile;
 
     res->call_id    = call_id;
     res->filename   = filename;
