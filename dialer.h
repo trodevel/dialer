@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
+// $Revision: 1790 $ $Date:: 2015-05-31 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -112,6 +112,7 @@ private:
     // for interface IVoipServiceCallback
     void handle( const voip_service::VoipioInitiateCallResponse * r );
     void handle( const voip_service::VoipioErrorResponse * r );
+    void handle( const voip_service::VoipioRejectResponse * r );
     void handle( const voip_service::VoipioDropResponse * r );
     void handle( const voip_service::VoipioCallErrorResponse * r );
     void handle( const voip_service::VoipioCallEnd * r );

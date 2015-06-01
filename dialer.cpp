@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1784 $ $Date:: 2015-05-29 #$ $Author: serge $
+// $Revision: 1790 $ $Date:: 2015-05-31 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -148,6 +148,10 @@ void Dialer::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( voip_service::VoipioErrorResponse ) )
     {
         handle( dynamic_cast< const voip_service::VoipioErrorResponse *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( voip_service::VoipioRejectResponse ) )
+    {
+        handle( dynamic_cast< const voip_service::VoipioRejectResponse *>( req ) );
     }
     else if( typeid( *req ) == typeid( voip_service::VoipioDropResponse ) )
     {
@@ -335,6 +339,30 @@ void Dialer::handle( const voip_service::VoipioErrorResponse * r )
 
     if( callback_ )
         callback_->consume( create_error_response( r->errorcode, r->descr ) );
+
+    state_      = IDLE;
+    call_id_    = 0;
+
+    dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
+}
+
+void Dialer::handle( const voip_service::VoipioRejectResponse * r )
+{
+    dummy_log_debug( MODULENAME, "handle VoipioRejectResponse: %s", r->descr.c_str() );
+
+    // private: no mutex lock
+
+    if( state_ != WAITING_INITIATE_CALL_RESPONSE )
+    {
+        dummy_log_fatal( MODULENAME, "handle VoipioRejectResponse: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        return;
+    }
+
+    ASSERT( call_id_ == 0 );
+
+    if( callback_ )
+        callback_->consume( create_reject_response( r->errorcode, r->descr ) );
 
     state_      = IDLE;
     call_id_    = 0;
