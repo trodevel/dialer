@@ -19,20 +19,19 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
+// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
 #include <functional>                   // std::bind
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
+#include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
 #include "../voip_io/object_factory.h"  // voip_service::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
-#include "object_factory.h"             // create_message_t
-#include "i_dialer_callback.h"          // IDialerCallback
 
 #include "../scheduler/i_scheduler.h"   // IScheduler
 #include "../scheduler/timeout_job.h"   // new_timeout_job
@@ -46,7 +45,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_DIALER_START
 
 PlayerSM::PlayerSM():
-    state_( UNKNOWN ), voips_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
+    state_( UNKNOWN ), job_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
 {
 }
 
@@ -58,12 +57,12 @@ PlayerSM::~PlayerSM()
     }
 }
 
-bool PlayerSM::init( voip_service::IVoipService  * voips, sched::IScheduler * sched )
+bool PlayerSM::init( skype_service::SkypeService * sw, sched::IScheduler * sched )
 {
-    if( !voips || !sched )
+    if( !sw || !sched )
         return false;
 
-    voips_  = voips;
+    sio_    = sw;
     sched_  = sched;
 
     dummy_log_info( MODULENAME, "init: switching to IDLE" );
@@ -74,7 +73,7 @@ bool PlayerSM::init( voip_service::IVoipService  * voips, sched::IScheduler * sc
 }
 
 
-bool PlayerSM::register_callback( IDialerCallback * callback )
+bool PlayerSM::register_callback( voip_service::IVoipServiceCallback  * callback )
 {
     if( callback == 0L )
         return false;
@@ -91,14 +90,14 @@ bool PlayerSM::register_callback( IDialerCallback * callback )
 
 bool PlayerSM::is_inited() const
 {
-    if( !voips_ || sched_ == 0L )
+    if( !sio_ || sched_ == 0L )
         return false;
 
     return true;
 }
 
 
-void PlayerSM::play_file( uint32 call_id, const std::string & filename )
+void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -111,7 +110,16 @@ void PlayerSM::play_file( uint32 call_id, const std::string & filename )
 
     ASSERT( is_inited() );
 
-    voips_->consume( voip_service::create_play_file( call_id, filename ) );
+    bool b = sio_->alter_call_set_input_file( call_id, filename, job_id );
+
+    if( b == false )
+    {
+        dummy_log_error( MODULENAME, "failed setting input file: %s", filename.c_str() );
+
+        callback_->consume( voip_service::create_error_response( job_id, 0, "failed setting input file: " + filename ) );
+
+        return;
+    }
 
 //    sched::IOneTimeJob* job = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, call_id ) );
 //
@@ -128,7 +136,8 @@ void PlayerSM::play_file( uint32 call_id, const std::string & filename )
 
     //job_.reset( sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, call_id ) ) );
 
-    state_  = WAITING;
+    state_  = WAIT_PLAY_RESP;
+    job_id_ = job_id;
 }
 
 void PlayerSM::stop()
@@ -137,7 +146,7 @@ void PlayerSM::stop()
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAITING && state_ != PLAYING )
+    if( state_ != WAIT_PLAY_RESP && state_ != PLAYING )
     {
         dummy_log_fatal( MODULENAME, "stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );
@@ -158,13 +167,13 @@ bool PlayerSM::is_playing() const
     return state_ == PLAYING;
 }
 
-void PlayerSM::on_play_start( uint32 call_id )
+void PlayerSM::on_play_start( uint32_t call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_start: %u", call_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAITING )
+    if( state_ != WAIT_PLAY_RESP )
     {
         dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );
@@ -173,14 +182,15 @@ void PlayerSM::on_play_start( uint32 call_id )
 
     dummy_log_debug( MODULENAME, "on_play_start: ok" );
 
-    callback_->consume( create_message_t<DialerPlayStarted>( call_id ) );
+    callback_->consume( voip_service::create_play_file_response( job_id_ ) );
 
     state_   = PLAYING;
     job_->cancel();     // cancel timeout job as replay was successfully started
     job_    = 0L;
+    job_id_ = 0;
 }
 
-void PlayerSM::on_play_stop( uint32 call_id )
+void PlayerSM::on_play_stop( uint32_t call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_stop: %u", call_id );
 
@@ -195,18 +205,17 @@ void PlayerSM::on_play_stop( uint32 call_id )
 
     dummy_log_debug( MODULENAME, "on_play_stop: ok" );
 
-    callback_->consume( create_message_t<DialerPlayStopped>( call_id ) );
-
     state_  = IDLE;
+    job_id_ = 0;
 }
 
-void PlayerSM::on_play_failed( uint32 call_id )
+void PlayerSM::on_play_failed( uint32_t call_id )
 {
     dummy_log_debug( MODULENAME, "on_play_failed: %u", call_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAITING )
+    if( state_ != WAIT_PLAY_RESP )
     {
         dummy_log_fatal( MODULENAME, "on_play_failed: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );
@@ -215,10 +224,11 @@ void PlayerSM::on_play_failed( uint32 call_id )
 
     dummy_log_debug( MODULENAME, "on_play_failed: ok" );
 
-    callback_->consume( create_message_t<DialerPlayFailed>( call_id ) );
+    callback_->consume( voip_service::create_error_response( job_id_, 0, "play failed" ) );
 
     state_  = IDLE;
     job_    = 0L;       // job_ is not valid after call of invoke()
+    job_id_ = 0;
 }
 
 

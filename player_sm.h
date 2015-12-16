@@ -19,13 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1724 $ $Date:: 2015-04-24 #$ $Author: serge $
+// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
 
 #include <string>                   // std::string
-#include "../utils/types.h"         // uint32
+#include <cstdint>                  // uint32_t
 
 #include <mutex>                    // std::mutex
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
@@ -36,14 +36,17 @@ class IScheduler;
 class IOneTimeJob;
 }
 
+namespace skype_service
+{
+class SkypeService;
+}
+
 namespace voip_service
 {
-class IVoipService;
+class IVoipServiceCallback;
 }
 
 NAMESPACE_DIALER_START
-
-class IDialerCallback;
 
 class PlayerSM
 {
@@ -52,7 +55,7 @@ public:
     {
         UNKNOWN = 0,
         IDLE,
-        WAITING,
+        WAIT_PLAY_RESP,
         PLAYING,
     };
 
@@ -60,23 +63,23 @@ public:
     PlayerSM();
     ~PlayerSM();
 
-    bool init( voip_service::IVoipService  * voips, sched::IScheduler * sched );
+    bool init( skype_service::SkypeService * sw, sched::IScheduler * sched );
 
-    bool register_callback( IDialerCallback * callback );
+    bool register_callback( voip_service::IVoipServiceCallback  * callback );
 
     bool is_inited() const;
 
     // IPlayerSM
-    void play_file( uint32 call_id, const std::string & filename );
+    void play_file( uint32_t job_id, uint32_t call_id, const std::string & filename );
     void stop();
     bool is_playing() const;
 
     // IVoipServiceCallback
-    void on_play_start( uint32 call_id );
-    void on_play_stop( uint32 call_id );
+    void on_play_start( uint32_t call_id );
+    void on_play_stop( uint32_t call_id );
 
     // called by timer
-    void on_play_failed( uint32 call_id );
+    void on_play_failed( uint32_t call_id );
 
 private:
 
@@ -84,10 +87,11 @@ private:
     mutable std::mutex         mutex_;
 
     state_e                     state_;
+    uint32_t                    job_id_;
 
-    voip_service::IVoipService  * voips_;
+    skype_service::SkypeService * sio_;;
     sched::IScheduler           * sched_;
-    IDialerCallback             * callback_;
+    voip_service::IVoipServiceCallback  * callback_;
 
     //std::shared_ptr<sched::IOneTimeJob>     job_;
     sched::IOneTimeJob             * job_;

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2992 $ $Date:: 2015-12-15 #$ $Author: serge $
+// $Revision: 2993 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -66,9 +66,7 @@ public:
         UNKNOWN = 0,
         IDLE,
         WAITING_INITIATE_CALL_RESPONSE,
-        WAITING_DIALLING,
-        DIALLING,
-        RINGING,
+        WAITING_CONNECTION,
         CONNECTED,
         WAITING_DROP_RESPONSE,
     };

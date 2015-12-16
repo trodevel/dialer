@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2992 $ $Date:: 2015-12-15 #$ $Author: serge $
+// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -182,6 +182,7 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
         return;
     }
 
+    ASSERT( req_hash_id_ == 0 );
     req_hash_id_    = req->job_id;
 
     state_  = WAITING_INITIATE_CALL_RESPONSE;
@@ -195,21 +196,31 @@ void Dialer::handle( const voip_service::DropRequest * req )
 
     // private: no mutex lock
 
-    if( state_ != WAITING_DIALLING && state_ != DIALLING && state_ != RINGING && state_ != CONNECTED )
+    if( state_ != WAITING_CONNECTION && state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "handle voip_service::DropRequest: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( 0 );
+        dummy_log_warn( MODULENAME, "handle voip_service::DropRequest: cannot process in state %s", StrHelper::to_string( state_ ).c_str() );
+
+        send_reject_response( req->job_id, 0, "cannot proceed in state " + StrHelper::to_string( state_ ) );
+
         return;
     }
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    voips_->consume( voip_service::create_message_t<voip_service::Drop>( req->call_id ) );
+    bool b = sio_->set_call_status( req->call_id, skype_service::call_status_e::FINISHED, req->job_id );
+
+    if( b == false )
+    {
+        callback_consume( voip_service::create_error_response( req->job_id, 0, "voip io failed" ) );
+        return;
+    }
+
+    ASSERT( req_hash_id_ == 0 );
+    req_hash_id_    = req->job_id;
 
     state_      = WAITING_DROP_RESPONSE;
 
     dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
-
 }
 
 void Dialer::handle( const voip_service::PlayFileRequest * req )
@@ -227,7 +238,7 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    player_.play_file( req->call_id, req->filename );
+    player_.play_file( req->job_id, req->call_id, req->filename );
 }
 
 void Dialer::handle( const voip_service::RecordFileRequest * req )
