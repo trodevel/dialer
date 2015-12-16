@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1790 $ $Date:: 2015-05-31 #$ $Author: serge $
+// $Revision: 2992 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -28,13 +28,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>                    // std::mutex
 #include "../utils/types.h"         // uint32
 
-#include "../voip_io/i_voip_service_callback.h"     // IVoipServiceCallback
-#include "../voip_io/objects.h"                     // VoipioInitiateCallResponse
-#include "../threcon/i_controllable.h"              // IControllable
-#include "../servt/server_t.h"      // ServerT
-#include "objects.h"                // DialerObject
-#include "i_dialer.h"               // IDialer
-#include "player_sm.h"              // PlayerSM
+#include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
+#include "../voip_io/objects.h"                 // InitiateCallResponse
+#include "../threcon/i_controllable.h"          // IControllable
+#include "../skype_service/i_callback.h"        // ICallback
+#include "../skype_service/events.h"            // ConnStatusEvent, ...
+#include "../servt/server_t.h"                  // ServerT
+#include "../voip_io/i_voip_service.h"          // IVoipService
+#include "player_sm.h"                          // PlayerSM
+
+
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
@@ -43,22 +46,16 @@ namespace sched
 class IScheduler;
 }
 
-namespace voip_service
-{
-class IVoipService;
-}
-
 NAMESPACE_DIALER_START
 
-class IDialerCallback;
 class Dialer;
 
 typedef servt::ServerT< const servt::IObject*, Dialer> ServerBase;
 
 class Dialer:
         public ServerBase,
-        virtual public IDialer,
-        virtual public voip_service::IVoipServiceCallback,
+        virtual public voip_service::IVoipService,
+        virtual public skype_service::ICallback,
         virtual public threcon::IControllable
 {
     friend ServerBase;
@@ -81,7 +78,7 @@ public:
     ~Dialer();
 
     bool init(
-            voip_service::IVoipService  * voips,
+            skype_service::SkypeService * sw,
             sched::IScheduler           * sched );
 
     bool register_callback( IDialerCallback * callback );
@@ -90,11 +87,11 @@ public:
 
     state_e get_state() const;
 
-    // interface IDialer
-    void consume( const DialerObject * req );
+    // interface IVoipService
+    virtual void consume( const voip_service::Object * req );
 
-    // interface IVoipServiceCallback
-    virtual void consume( const voip_service::VoipioCallbackObject * req );
+    // interface skype_service::ICallback
+    virtual void consume( const skype_service::Event * e );
 
     // interface IControllable
     bool shutdown();
@@ -103,38 +100,41 @@ public:
 private:
     void handle( const servt::IObject* req );
 
-    // for interface IDialer
-    void handle( const DialerInitiateCallRequest * req );
-    void handle( const DialerDrop * req );
-    void handle( const DialerPlayFile * req );
-    void handle( const DialerRecordFile * req );
+    // for interface IVoipService
+    void handle( const voip_service::InitiateCallRequest * req );
+    void handle( const voip_service::DropRequest * req );
+    void handle( const voip_service::PlayFileRequest * req );
+    void handle( const voip_service::RecordFileRequest * req );
+    void handle( const voip_service::ObjectWrap * req );
 
-    // for interface IVoipServiceCallback
-    void handle( const voip_service::VoipioInitiateCallResponse * r );
-    void handle( const voip_service::VoipioErrorResponse * r );
-    void handle( const voip_service::VoipioRejectResponse * r );
-    void handle( const voip_service::VoipioDropResponse * r );
-    void handle( const voip_service::VoipioCallErrorResponse * r );
-    void handle( const voip_service::VoipioCallEnd * r );
-    void handle( const voip_service::VoipioDial * r );
-    void handle( const voip_service::VoipioRing * r );
-    void handle( const voip_service::VoipioConnect * r );
-    void handle( const voip_service::VoipioCallDuration * r );
-    void handle( const voip_service::VoipioPlayStarted * r );
-    void handle( const voip_service::VoipioPlayStopped * r );
+    // interface skype_service::ICallback
+    void handle( const skype_service::ConnStatusEvent * e );
+    void handle( const skype_service::UserStatusEvent * e );
+    void handle( const skype_service::CurrentUserHandleEvent * e );
+    void handle( const skype_service::ErrorEvent * e );
+    void handle( const skype_service::CallStatusEvent * e );
+    void handle( const skype_service::CallPstnStatusEvent * e );
+    void handle( const skype_service::CallDurationEvent * e );
+    void handle( const skype_service::CallFailureReasonEvent * e );
+    void handle( const skype_service::CallVaaInputStatusEvent * e );
+
+    void send_reject_response( uint32_t job_id, uint32_t errorcode, const std::string & descr );
 
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
 
+    void callback_consume( const voip_service::ResponseObject * req );
+
 private:
-    mutable std::mutex         mutex_;
+    mutable std::mutex          mutex_;
 
     state_e                     state_;
 
-    voip_service::IVoipService  * voips_;
+    skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;
-    IDialerCallback             * callback_;
+    voip_service::IVoipServiceCallback  * callback_;
 
+    uint32_t                    req_hash_id_;
     uint32                      call_id_;
     PlayerSM                    player_;
 };
