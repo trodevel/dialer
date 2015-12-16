@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2993 $ $Date:: 2015-12-16 #$ $Author: serge $
+// $Revision: 2997 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -79,7 +79,7 @@ public:
             skype_service::SkypeService * sw,
             sched::IScheduler           * sched );
 
-    bool register_callback( IDialerCallback * callback );
+    bool register_callback( voip_service::IVoipServiceCallback * callback );
 
     bool is_inited() const;
 
@@ -123,6 +123,8 @@ private:
 
     void callback_consume( const voip_service::ResponseObject * req );
 
+    bool send_reject_if_in_request_processing( uint32_t job_id );
+
 private:
     mutable std::mutex          mutex_;
 
@@ -132,7 +134,7 @@ private:
     sched::IScheduler           * sched_;
     voip_service::IVoipServiceCallback  * callback_;
 
-    uint32_t                    req_hash_id_;
+    uint32_t                    current_job_id_;
     uint32                      call_id_;
     PlayerSM                    player_;
 };

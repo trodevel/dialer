@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
+// $Revision: 2999 $ $Date:: 2015-12-16 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -28,7 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "str_helper.h"                 // StrHelper
 #include "../voip_io/object_factory.h"  // create_error_response
-#include "i_dialer_callback.h"          // IDialerCallback
+#include "i_dialer_callback.h"          // voip_service::IVoipServiceCallback
 
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
@@ -69,7 +69,7 @@ bool Dialer::init(
     return true;
 }
 
-bool Dialer::register_callback( IDialerCallback * callback )
+bool Dialer::register_callback( voip_service::IVoipServiceCallback * callback )
 {
     if( callback == 0L )
         return false;
@@ -163,6 +163,9 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
 
     // private: no mutex lock
 
+    if( send_reject_if_in_request_processing( req->job_id ) )
+        return;
+
     if( state_ != IDLE )
     {
         dummy_log_warn( MODULENAME, "handle voip_service::InitiateCallRequest: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
@@ -182,8 +185,8 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
         return;
     }
 
-    ASSERT( req_hash_id_ == 0 );
-    req_hash_id_    = req->job_id;
+    ASSERT( current_job_id_ == 0 );
+    current_job_id_    = req->job_id;
 
     state_  = WAITING_INITIATE_CALL_RESPONSE;
 
@@ -195,6 +198,9 @@ void Dialer::handle( const voip_service::DropRequest * req )
     dummy_log_debug( MODULENAME, "handle voip_service::DropRequest" );
 
     // private: no mutex lock
+
+    if( send_reject_if_in_request_processing( req->job_id ) )
+        return;
 
     if( state_ != WAITING_CONNECTION && state_ != CONNECTED )
     {
@@ -215,8 +221,7 @@ void Dialer::handle( const voip_service::DropRequest * req )
         return;
     }
 
-    ASSERT( req_hash_id_ == 0 );
-    req_hash_id_    = req->job_id;
+    current_job_id_    = req->job_id;
 
     state_      = WAITING_DROP_RESPONSE;
 
@@ -229,6 +234,9 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
 
     // private: no mutex lock
 
+    if( send_reject_if_in_request_processing( req->job_id ) )
+        return;
+
     if( state_ != CONNECTED )
     {
         dummy_log_fatal( MODULENAME, "handle voip_service::PlayFileRequest: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
@@ -239,6 +247,8 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
     ASSERT( is_call_id_valid( req->call_id ) );
 
     player_.play_file( req->job_id, req->call_id, req->filename );
+
+    current_job_id_    = req->job_id;
 }
 
 void Dialer::handle( const voip_service::RecordFileRequest * req )
@@ -246,6 +256,9 @@ void Dialer::handle( const voip_service::RecordFileRequest * req )
     dummy_log_debug( MODULENAME, "handle voip_service::RecordFileRequest" );
 
     // private: no mutex lock
+
+    if( send_reject_if_in_request_processing( req->job_id ) )
+        return;
 
     if( state_ != CONNECTED )
     {
@@ -256,14 +269,79 @@ void Dialer::handle( const voip_service::RecordFileRequest * req )
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    voips_->consume( voip_service::create_record_file( req->call_id, req->filename ) );
-
-    bool b = true;
+    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename, req->job_id );
 
     if( b == false )
     {
-        dummy_log_error( MODULENAME, "handle voip_service::RecordFileRequest: voip service failed" );
+        dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
+
+        callback_consume( voip_service::create_error_response( req->job_id, 0, "failed output input file: " + req->filename ) );
+
+        return;
     }
+
+    current_job_id_ = req->job_id;
+}
+
+void Dialer::handle( const voip_service::ObjectWrap * req )
+{
+    // private: no mutex lock
+
+    const skype_service::Event * ev = static_cast<const skype_service::Event*>( req->ptr );
+
+    ASSERT( ev );
+
+    switch( state_ )
+    {
+    case WAITING_INITIATE_CALL_RESPONSE:
+    case WAITING_DROP_RESPONSE:
+    {
+        if( ev->has_hash_id() == false )
+        {
+            dummy_log_info( MODULENAME, "ignoring a non-response notification: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
+
+            delete ev;
+
+            return;
+        }
+
+        if( ev->get_hash_id() != current_job_id_ )
+        {
+            dummy_log_error( MODULENAME, "unexpected hash id: %u, expected %u, msg %s, ignoring",
+                    ev->get_hash_id(), current_job_id_,
+                    skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
+
+            delete ev;
+
+            return;
+        }
+
+    }
+        break;
+    default:
+        break;
+    }
+
+    switch( state_ )
+    {
+    case WAITING_INITIATE_CALL_RESPONSE:
+        handle_in_state_w_ic( ev );
+        break;
+    case WAITING_DROP_RESPONSE:
+        handle_in_state_w_dr( ev );
+        break;
+    case WAITING_CONNECTION:
+        handle_in_state_w_pl( ev );
+        break;
+    case CONNECTED:
+        handle_in_state_w_re( ev );
+        break;
+    default:
+        handle_in_state_none( ev );
+        break;
+    }
+
+    delete ev;
 }
 
 bool Dialer::shutdown()
@@ -577,6 +655,24 @@ void Dialer::callback_consume( const voip_service::ResponseObject * req )
 {
     if( callback_ )
         callback_->consume( req );
+}
+
+bool Dialer::send_reject_if_in_request_processing( uint32_t job_id )
+{
+    // called from locked area
+
+    if( current_job_id_ == 0 )
+    {
+        return false;
+    }
+
+    dummy_log_info( MODULENAME, "cannot process request id %u, currently processing request %u", job_id, current_job_id_ );
+
+    send_reject_response( job_id, 0,
+            "cannot process request id " + std::string( job_id ) +
+            ", currently processing request " + std::string( current_job_id_ ) );
+
+    return true;
 }
 
 NAMESPACE_DIALER_END
