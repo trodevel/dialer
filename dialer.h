@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3004 $ $Date:: 2015-12-17 #$ $Author: serge $
+// $Revision: 3013 $ $Date:: 2015-12-18 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -110,7 +110,9 @@ private:
     void handle( const skype_service::UserStatusEvent * e );
     void handle( const skype_service::CurrentUserHandleEvent * e );
     void handle( const skype_service::ErrorEvent * e );
-    void handle( const skype_service::CallStatusEvent * e );
+    void handle_in_w_conn( const skype_service::CallStatusEvent * e );
+    void handle_in_connected( const skype_service::CallStatusEvent * e );
+    void handle_in_w_drpr( const skype_service::CallStatusEvent * e );
     void handle( const skype_service::CallPstnStatusEvent * e );
     void handle( const skype_service::CallDurationEvent * e );
     void handle( const skype_service::CallFailureReasonEvent * e );
@@ -121,21 +123,23 @@ private:
     void handle_in_state_unknown( const skype_service::Event * ev );
     void handle_in_state_idle( const skype_service::Event * ev );
     void handle_in_state_w_ical( const skype_service::Event * ev );
-    void handle_in_state_w_drpr( const skype_service::Event * ev );
     void handle_in_state_w_conn( const skype_service::Event * ev );
     void handle_in_state_connected( const skype_service::Event * ev );
+    void handle_in_state_w_drpr( const skype_service::Event * ev );
 
     void send_reject_response( uint32_t job_id, uint32_t errorcode, const std::string & descr );
+    void send_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr );
 
     bool is_inited__() const;
     bool is_call_id_valid( uint32 call_id ) const;
 
-    void callback_consume( const voip_service::ResponseObject * req );
+    void callback_consume( const voip_service::CallbackObject * req );
 
     bool send_reject_if_in_request_processing( uint32_t job_id );
     bool ignore_non_response( const skype_service::Event * ev );
     static const char* decode_failure_reason( uint32 c );
     void switch_to_ready_if_possible();
+    void switch_to_idle_and_cleanup();
 
 private:
     mutable std::mutex          mutex_;
@@ -150,6 +154,11 @@ private:
     uint32                      call_id_;
     skype_service::conn_status_e   cs_;
     skype_service::user_status_e   us_;
+    uint32                      failure_reason_;
+    std::string                 failure_reason_msg_;
+    uint32                      pstn_status_;
+    std::string                 pstn_status_msg_;
+
     PlayerSM                    player_;
 };
 

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3004 $ $Date:: 2015-12-17 #$ $Author: serge $
+// $Revision: 3013 $ $Date:: 2015-12-18 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -353,6 +353,8 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
     case skype_service::Event::CALL_PSTN_STATUS:
     case skype_service::Event::CALL_FAILUREREASON:
     case skype_service::Event::CALL_VAA_INPUT_STATUS:
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     case skype_service::Event::ERROR:
     {
         dummy_log_error( MODULENAME, "handle_in_state_idle: event %s, unexpected in state %s",
@@ -364,63 +366,6 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
     case skype_service::Event::UNDEF:
         break;
 
-    case skype_service::Event::CHAT:
-    case skype_service::Event::CHATMEMBER:
-        // simply ignore
-        break;
-
-    case skype_service::Event::UNKNOWN:
-    default:
-        on_unknown( "???" );
-        break;
-    }
-}
-
-void Dialer::handle_in_state_connected( const skype_service::Event * ev )
-{
-    // private: no mutex lock
-
-    skype_service::Event::type_e id = ev->get_type();
-
-    switch( id )
-    {
-    case skype_service::Event::CONNSTATUS:
-        handle( static_cast<const skype_service::ConnStatusEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::USERSTATUS:
-        handle( static_cast<const skype_service::UserStatusEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::CALL:
-        break;
-    case skype_service::Event::CALL_DURATION:
-        handle( static_cast<const skype_service::CallDurationEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::CALL_STATUS:
-        handle( static_cast<const skype_service::CallStatusEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::CALL_PSTN_STATUS:
-        handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::CALL_FAILUREREASON:
-        handle( static_cast<const skype_service::CallFailureReasonEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::CALL_VAA_INPUT_STATUS:
-        handle( static_cast<const skype_service::CallVaaInputStatusEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::ERROR:
-        handle( static_cast<const skype_service::ErrorEvent*>( ev ) );
-        break;
-
-    case skype_service::Event::UNDEF:
-    case skype_service::Event::CURRENTUSERHANDLE:
-    case skype_service::Event::USER_ONLINE_STATUS:
     case skype_service::Event::CHAT:
     case skype_service::Event::CHATMEMBER:
         // simply ignore
@@ -451,6 +396,8 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
     case skype_service::Event::CALL_PSTN_STATUS:
     case skype_service::Event::CALL_FAILUREREASON:
     case skype_service::Event::CALL_VAA_INPUT_STATUS:
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     {
         dummy_log_error( MODULENAME, "handle_in_state_w_ical: event %s, unexpected in state %s",
                 skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
@@ -475,6 +422,7 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
             callback_consume( voip_service::create_initiate_call_response( current_job_id_, call_id, status ) );
 
             current_job_id_ = 0;
+            call_id_        = call_id;
             state_          = WAITING_CONNECTION;
 
             dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
@@ -517,9 +465,227 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
     }
 }
 
+void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
+{
+    // private: no mutex lock
+
+    ASSERT( current_job_id_ == 0 );
+
+    skype_service::Event::type_e id = ev->get_type();
+
+    switch( id )
+    {
+    case skype_service::Event::CONNSTATUS:
+    case skype_service::Event::USERSTATUS:
+        // TODO process disconnect
+        break;
+
+    case skype_service::Event::CALL:
+    case skype_service::Event::CALL_DURATION:
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
+    {
+        dummy_log_error( MODULENAME, "handle_in_state_w_conn: event %s, unexpected in state %s",
+                skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+    break;
+
+    case skype_service::Event::CALL_PSTN_STATUS:
+        handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_FAILUREREASON:
+        handle( static_cast<const skype_service::CallFailureReasonEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_STATUS:
+        handle_in_w_conn( static_cast<const skype_service::CallStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::ERROR:
+        {
+            const skype_service::ErrorEvent * ev_c = static_cast<const skype_service::ErrorEvent*>( ev );
+
+            uint32 errorcode    = ev_c->get_par_int();
+            std::string descr   = ev_c->get_par_str();
+
+            dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
+
+            callback_consume( voip_service::create_failed( call_id_, voip_service::Failed::UNDEF, errorcode, descr ) );
+
+            switch_to_idle_and_cleanup();
+        }
+        break;
+
+    case skype_service::Event::UNDEF:
+    case skype_service::Event::CURRENTUSERHANDLE:
+    case skype_service::Event::USER_ONLINE_STATUS:
+    case skype_service::Event::CHAT:
+    case skype_service::Event::CHATMEMBER:
+        // simply ignore
+        break;
+
+    case skype_service::Event::UNKNOWN:
+    default:
+        on_unknown( "???" );
+        break;
+    }
+}
+
+void Dialer::handle_in_state_connected( const skype_service::Event * ev )
+{
+    // private: no mutex lock
+    skype_service::Event::type_e id = ev->get_type();
+
+    switch( id )
+    {
+    case skype_service::Event::CONNSTATUS:
+    case skype_service::Event::USERSTATUS:
+        // TODO process disconnect
+        break;
+
+    case skype_service::Event::CALL:
+        break;
+
+    case skype_service::Event::CALL_DURATION:
+        handle( static_cast<const skype_service::CallDurationEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
+        handle( static_cast<const skype_service::CallVaaInputStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    {
+        if( ignore_non_response( ev ) )
+        {
+            return;
+        }
+
+        //player_.  // TODO forward to player
+    }
+    break;
+
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
+        break;
+
+    case skype_service::Event::CALL_PSTN_STATUS:
+        handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_FAILUREREASON:
+        handle( static_cast<const skype_service::CallFailureReasonEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_STATUS:
+        handle_in_connected( static_cast<const skype_service::CallStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::ERROR:
+        {
+            const skype_service::ErrorEvent * ev_c = static_cast<const skype_service::ErrorEvent*>( ev );
+
+            uint32 errorcode    = ev_c->get_par_int();
+            std::string descr   = ev_c->get_par_str();
+
+            dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
+
+            callback_consume( voip_service::create_failed( call_id_, voip_service::Failed::UNDEF, errorcode, descr ) );
+
+            switch_to_idle_and_cleanup();
+        }
+        break;
+
+    case skype_service::Event::UNDEF:
+    case skype_service::Event::CURRENTUSERHANDLE:
+    case skype_service::Event::USER_ONLINE_STATUS:
+    case skype_service::Event::CHAT:
+    case skype_service::Event::CHATMEMBER:
+        // simply ignore
+        break;
+
+    case skype_service::Event::UNKNOWN:
+    default:
+        on_unknown( "???" );
+        break;
+    }
+}
+
 void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
 {
     // private: no mutex lock
+    skype_service::Event::type_e id = ev->get_type();
+
+    switch( id )
+    {
+    case skype_service::Event::CONNSTATUS:
+    case skype_service::Event::USERSTATUS:
+        // TODO process disconnect
+        break;
+
+    case skype_service::Event::CALL:
+        break;
+
+    case skype_service::Event::CALL_DURATION:
+        handle( static_cast<const skype_service::CallDurationEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
+        handle( static_cast<const skype_service::CallVaaInputStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    {
+        dummy_log_error( MODULENAME, "handle_in_state_w_ical: event %s, unexpected in state %s",
+                skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+    break;
+
+    case skype_service::Event::CALL_PSTN_STATUS:
+        handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_FAILUREREASON:
+        handle( static_cast<const skype_service::CallFailureReasonEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CALL_STATUS:
+        handle_in_w_drpr( static_cast<const skype_service::CallStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::ERROR:
+        {
+            const skype_service::ErrorEvent * ev_c = static_cast<const skype_service::ErrorEvent*>( ev );
+
+            uint32 errorcode    = ev_c->get_par_int();
+            std::string descr   = ev_c->get_par_str();
+
+            dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
+
+            callback_consume( voip_service::create_failed( call_id_, voip_service::Failed::UNDEF, errorcode, descr ) );
+
+            switch_to_idle_and_cleanup();
+        }
+        break;
+
+    case skype_service::Event::UNDEF:
+    case skype_service::Event::CURRENTUSERHANDLE:
+    case skype_service::Event::USER_ONLINE_STATUS:
+    case skype_service::Event::CHAT:
+    case skype_service::Event::CHATMEMBER:
+        // simply ignore
+        break;
+
+    case skype_service::Event::UNKNOWN:
+    default:
+        on_unknown( "???" );
+        break;
+    }
+
 
     if( ev->get_type() == skype_service::Event::CALL_STATUS )
     {
@@ -543,25 +709,6 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
     callback_consume( voip_service::create_error_response( current_job_id_, 0, "unexpected response: " + skype_service::StrHelper::to_string( ev->get_type() ) ) );
 
     current_job_id_ = 0;
-}
-
-void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
-{
-    // private: no mutex lock
-
-    req_state_      = NONE;
-    req_hash_id_    = 0;
-
-    if( ev->get_type() != skype_service::Event::ALTER_CALL_SET_INPUT_FILE )
-    {
-        dummy_log_error( MODULENAME, "unexpected response: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
-
-        callback_consume( create_call_error_response(
-                static_cast<const skype_service::BasicCallEvent*>( ev )->get_call_id(), 0,
-                "unexpected response: " + skype_service::StrHelper::to_string( ev->get_type() ) ) );
-
-        return;
-    }
 }
 
 void Dialer::handle_in_state_w_re( const skype_service::Event * ev )
@@ -921,6 +1068,21 @@ void Dialer::switch_to_ready_if_possible()
     }
 }
 
+void Dialer::switch_to_idle_and_cleanup()
+{
+    state_          = IDLE;
+    call_id_        = 0;
+    current_job_id_ = 0;
+
+    pstn_status_    = 0;
+    pstn_status_msg_.clear();
+
+    failure_reason_ = 0;
+    failure_reason_msg_.clear();
+
+    dummy_log_info( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
+}
+
 void Dialer::handle( const skype_service::CurrentUserHandleEvent * e )
 {
     dummy_log_info( MODULENAME, "current user handle %s", e->get_par_str().c_str() );
@@ -936,48 +1098,68 @@ void Dialer::handle( const skype_service::ErrorEvent * e )
     callback_consume( voip_service::create_error_response( 0, e->get_par_int(), e->get_par_str() ) );
 }
 
-void Dialer::handle( const skype_service::CallStatusEvent * e )
+void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
 {
-    uint32 n                    = e->get_call_id();
-    skype_service::call_status_e s = e->get_call_s();
+    uint32_t                        call_id = e->get_call_id();
+    skype_service::call_status_e    s       = e->get_call_s();
 
-    dummy_log_debug( MODULENAME, "call %u status %s", n, skype_service::to_string( s ).c_str() );
+    dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
 
     switch( s )
     {
     case skype_service::call_status_e::CANCELLED:
-        callback_consume( create_call_end( n, CallEnd::CANCELLED ) );
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::CANCELLED, 0, "cancelled by user" ) );
+        switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
-            callback_consume( create_call_end( n, CallEnd::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
+            callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
         else
-            callback_consume( create_call_end( n, CallEnd::FINISHED ) );
+            callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "cancelled by user" ) );
+
+        switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::ROUTING:
-        callback_consume( create_message_t<Dial>( n ) );
+        callback_consume( voip_service::create_message_t<voip_service::Dial>( call_id ) );
         break;
 
     case skype_service::call_status_e::RINGING:
-        callback_consume( create_message_t<Ring>( n ) );
+        callback_consume( voip_service::create_message_t<voip_service::Ring>( call_id ) );
         break;
 
     case skype_service::call_status_e::INPROGRESS:
-        callback_consume( create_message_t<Connect>( n ) );
+        callback_consume( voip_service::create_message_t<voip_service::Connected>( call_id ) );
+        state_          = CONNECTED;
+
+        dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
+
         break;
 
     case skype_service::call_status_e::NONE:
-        callback_consume( create_call_end( n, CallEnd::NONE ) );
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "call ended unexpectedly" ) );
+        switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FAILED:
-        callback_consume( create_call_end( n, CallEnd::FAILED, failure_reason_, failure_reason_msg_ ) );
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "call failed" ) );
+        switch_to_idle_and_cleanup();
         break;
 
+    case skype_service::call_status_e::MISSED:
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::REFUSED, 0, "call was missed" ) );
+        switch_to_idle_and_cleanup();
+        break;
+
+    case skype_service::call_status_e::BUSY:
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::BUSY, 0, "number is busy" ) );
+        switch_to_idle_and_cleanup();
+
+        break;
     case skype_service::call_status_e::REFUSED:
-        callback_consume( create_call_end( n, CallEnd::REFUSED ) );
+        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::REFUSED, 0, "call was refused" ) );
+        switch_to_idle_and_cleanup();
         break;
 
     default:
@@ -985,6 +1167,105 @@ void Dialer::handle( const skype_service::CallStatusEvent * e )
         break;
     }
 }
+
+void Dialer::handle_in_connected( const skype_service::CallStatusEvent * e )
+{
+    uint32_t                        call_id = e->get_call_id();
+    skype_service::call_status_e    s       = e->get_call_s();
+
+    dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
+
+    switch( s )
+    {
+    case skype_service::call_status_e::CANCELLED:
+        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::CANCELLED, 0, "cancelled by user" ) );
+        switch_to_idle_and_cleanup();
+        break;
+
+    case skype_service::call_status_e::FINISHED:
+        if( pstn_status_ != 0 )
+            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
+        else
+            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, 0, "cancelled by user" ) );
+
+        switch_to_idle_and_cleanup();
+        break;
+
+    case skype_service::call_status_e::ROUTING:
+    case skype_service::call_status_e::RINGING:
+    case skype_service::call_status_e::INPROGRESS:
+    case skype_service::call_status_e::BUSY:
+    case skype_service::call_status_e::REFUSED:
+    case skype_service::call_status_e::MISSED:
+    {
+        dummy_log_error( MODULENAME, "handle_in_connected: call %u, status %u, unexpected in state %s",
+                call_id_, s, StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+        break;
+
+    case skype_service::call_status_e::NONE:
+        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FINISHED, 0, "call ended unexpectedly" ) );
+        switch_to_idle_and_cleanup();
+        break;
+
+    case skype_service::call_status_e::FAILED:
+        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, 0, "call failed" ) );
+        switch_to_idle_and_cleanup();
+        break;
+
+    default:
+        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_service::to_string( s ).c_str(), s );
+        break;
+    }
+}
+
+void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
+{
+    uint32_t                        call_id = e->get_call_id();
+    skype_service::call_status_e    s       = e->get_call_s();
+
+    dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
+
+    switch( s )
+    {
+
+    case skype_service::call_status_e::FINISHED:
+    {
+        if( ignore_non_response( e ) )
+        {
+            return;
+        }
+
+        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+
+        switch_to_idle_and_cleanup();
+
+    }
+        break;
+
+    case skype_service::call_status_e::NONE:
+    case skype_service::call_status_e::FAILED:
+    case skype_service::call_status_e::CANCELLED:
+    case skype_service::call_status_e::ROUTING:
+    case skype_service::call_status_e::RINGING:
+    case skype_service::call_status_e::INPROGRESS:
+    case skype_service::call_status_e::BUSY:
+    case skype_service::call_status_e::REFUSED:
+    case skype_service::call_status_e::MISSED:
+    {
+        dummy_log_error( MODULENAME, "handle_in_connected: call %u, status %u, unexpected in state %s",
+                call_id_, s, StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+        break;
+
+    default:
+        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_service::to_string( s ).c_str(), s );
+        break;
+    }
+}
+
 
 void Dialer::handle( const skype_service::CallPstnStatusEvent * ev )
 {
@@ -994,6 +1275,9 @@ void Dialer::handle( const skype_service::CallPstnStatusEvent * ev )
 
     dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
 
+    ASSERT( pstn_status_ == 0 );
+    ASSERT( pstn_status_msg_.empty() );
+
     pstn_status_        = ev->get_par_int();
     pstn_status_msg_    = ev->get_par_str();
 }
@@ -1002,12 +1286,15 @@ void Dialer::handle( const skype_service::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
 
-    callback_consume( create_call_duration( e->get_call_id(), e->get_par_int() ) );
+    callback_consume( voip_service::create_call_duration( e->get_call_id(), e->get_par_int() ) );
 }
 
 void Dialer::handle( const skype_service::CallFailureReasonEvent * e )
 {
     dummy_log_info( MODULENAME, "call %u failure %u", e->get_call_id(), e->get_par_int() );
+
+    ASSERT( failure_reason_ == 0 );
+    ASSERT( failure_reason_msg_.empty() );
 
     failure_reason_     = e->get_par_int();
     failure_reason_msg_ = decode_failure_reason( failure_reason_ );
@@ -1062,7 +1349,12 @@ void Dialer::send_reject_response( uint32_t job_id, uint32_t errorcode, const st
     callback_consume( voip_service::create_reject_response( job_id, errorcode, descr ) );
 }
 
-void Dialer::callback_consume( const voip_service::ResponseObject * req )
+void Dialer::send_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
+{
+    callback_consume( voip_service::create_error_response( job_id, errorcode, descr ) );
+}
+
+void Dialer::callback_consume( const voip_service::CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
