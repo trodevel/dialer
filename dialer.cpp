@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3013 $ $Date:: 2015-12-18 #$ $Author: serge $
+// $Revision: 3014 $ $Date:: 2015-12-20 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -406,27 +406,7 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
         break;
 
     case skype_service::Event::CALL_STATUS:
-        {
-            if( ignore_non_response( ev ) )
-            {
-                return;
-            }
-
-            uint32 call_id = static_cast<const skype_service::BasicCallEvent*>( ev )->get_call_id();
-
-            skype_service::call_status_e status_code = static_cast<const skype_service::CallStatusEvent*>( ev )->get_call_s();
-            uint32 status  = static_cast<uint32>( status_code );
-
-            dummy_log_debug( MODULENAME, "job_id %u, call initiated: %u, status %s", current_job_id_, call_id, skype_service::to_string( status_code ).c_str() );
-
-            callback_consume( voip_service::create_initiate_call_response( current_job_id_, call_id, status ) );
-
-            current_job_id_ = 0;
-            call_id_        = call_id;
-            state_          = WAITING_CONNECTION;
-
-            dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
-        }
+        handle_in_w_ical( static_cast<const skype_service::CallStatusEvent*>( ev ) );
         break;
 
     case skype_service::Event::ERROR:
@@ -1096,6 +1076,29 @@ void Dialer::handle( const skype_service::ErrorEvent * e )
     dummy_log_error( MODULENAME, "unhandled error %u '%s'", e->get_par_int(), e->get_par_str().c_str() );
 
     callback_consume( voip_service::create_error_response( 0, e->get_par_int(), e->get_par_str() ) );
+}
+
+void Dialer::handle_in_w_ical( const skype_service::CallStatusEvent * e )
+{
+    uint32_t                        call_id = e->get_call_id();
+    skype_service::call_status_e    s       = e->get_call_s();
+
+    dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
+
+    if( ignore_non_response( e ) )
+    {
+        return;
+    }
+
+    dummy_log_debug( MODULENAME, "job_id %u, call initiated: %u, status %s", current_job_id_, call_id, skype_service::to_string( s ).c_str() );
+
+    callback_consume( voip_service::create_initiate_call_response( current_job_id_, call_id, static_cast<uint32_t>( s ) ) );
+
+    current_job_id_ = 0;
+    call_id_        = call_id;
+    state_          = WAITING_CONNECTION;
+
+    dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 }
 
 void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
