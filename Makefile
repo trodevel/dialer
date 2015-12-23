@@ -68,7 +68,7 @@ EXE=
 SRCC = dialer.cpp str_helper.cpp player_sm.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
-LIB_NAMES = skype_service skype_io voip_io utils scheduler
+LIB_NAMES = skype_service skype_io utils scheduler
 LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
 
 all: static

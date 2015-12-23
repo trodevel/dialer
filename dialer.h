@@ -19,24 +19,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3014 $ $Date:: 2015-12-20 #$ $Author: serge $
+// $Revision: 3029 $ $Date:: 2015-12-23 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
 
 #include <string>                   // std::string
 #include <mutex>                    // std::mutex
-#include "../utils/types.h"         // uint32
+#include <cstdint>                  // uint32_t
 
+#include "../voip_io/i_voip_service.h"          // IVoipService
 #include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
 #include "../voip_io/objects.h"                 // InitiateCallResponse
-#include "../threcon/i_controllable.h"          // IControllable
 #include "../skype_service/i_callback.h"        // ICallback
 #include "../skype_service/events.h"            // ConnStatusEvent, ...
 #include "../servt/server_t.h"                  // ServerT
-#include "../voip_io/i_voip_service.h"          // IVoipService
+#include "../threcon/i_controllable.h"          // IControllable
 #include "player_sm.h"                          // PlayerSM
-
 
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
@@ -117,7 +116,6 @@ private:
     void handle( const skype_service::CallPstnStatusEvent * e );
     void handle( const skype_service::CallDurationEvent * e );
     void handle( const skype_service::CallFailureReasonEvent * e );
-    void handle( const skype_service::CallVaaInputStatusEvent * e );
 
     void on_unknown( const std::string & s );
 
@@ -128,17 +126,19 @@ private:
     void handle_in_state_connected( const skype_service::Event * ev );
     void handle_in_state_w_drpr( const skype_service::Event * ev );
 
+    void forward_to_player( const skype_service::Event * ev );
+
     void send_reject_response( uint32_t job_id, uint32_t errorcode, const std::string & descr );
     void send_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr );
 
     bool is_inited__() const;
-    bool is_call_id_valid( uint32 call_id ) const;
+    bool is_call_id_valid( uint32_t call_id ) const;
 
     void callback_consume( const voip_service::CallbackObject * req );
 
     bool send_reject_if_in_request_processing( uint32_t job_id );
     bool ignore_non_response( const skype_service::Event * ev );
-    static const char* decode_failure_reason( uint32 c );
+    static const char* decode_failure_reason( uint32_t c );
     void switch_to_ready_if_possible();
     void switch_to_idle_and_cleanup();
 
@@ -152,12 +152,12 @@ private:
     voip_service::IVoipServiceCallback  * callback_;
 
     uint32_t                    current_job_id_;
-    uint32                      call_id_;
+    uint32_t                    call_id_;
     skype_service::conn_status_e   cs_;
     skype_service::user_status_e   us_;
-    uint32                      failure_reason_;
+    uint32_t                    failure_reason_;
     std::string                 failure_reason_msg_;
-    uint32                      pstn_status_;
+    uint32_t                    pstn_status_;
     std::string                 pstn_status_msg_;
 
     PlayerSM                    player_;

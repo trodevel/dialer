@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
+// $Revision: 3025 $ $Date:: 2015-12-22 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -27,6 +27,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../voip_io/i_voip_service.h"  // IVoipService
 #include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
+#include "../skype_service/skype_service.h"     // skype_service::SkypeService
 #include "../voip_io/object_factory.h"  // voip_service::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
@@ -68,6 +69,7 @@ bool PlayerSM::init( skype_service::SkypeService * sw, sched::IScheduler * sched
     dummy_log_info( MODULENAME, "init: switching to IDLE" );
 
     state_  = IDLE;
+    job_id_ = 0;
 
     return true;
 }
@@ -99,6 +101,8 @@ bool PlayerSM::is_inited() const
 
 void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
 {
+    dummy_log_debug( MODULENAME, "play_file: job_id %u", job_id );
+
     MUTEX_SCOPE_LOCK( mutex_ );
 
     if( state_ != IDLE )
@@ -121,21 +125,6 @@ void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string &
         return;
     }
 
-//    sched::IOneTimeJob* job = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, call_id ) );
-//
-//    boost::shared_ptr<sched::IOneTimeJob>     job_p( job );
-
-    //job_.reset( job );
-//    job_    = job_p;
-    if( job_ )
-    {
-        delete job_;
-        job_    = 0L;
-    }
-    job_    = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, call_id ) );
-
-    //job_.reset( sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, call_id ) ) );
-
     state_  = WAIT_PLAY_RESP;
     job_id_ = job_id;
 }
@@ -146,11 +135,19 @@ void PlayerSM::stop()
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAIT_PLAY_RESP && state_ != PLAYING )
+    if( state_ == IDLE || state_ == UNKNOWN )
     {
-        dummy_log_fatal( MODULENAME, "stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( false );
+        dummy_log_warn( MODULENAME, "stop: ineffective in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
+    }
+
+    if( state_ == WAIT_PLAY_START )
+    {
+        if( job_ )
+        {
+            job_->cancel();
+            job_    = nullptr;
+        }
     }
 
     dummy_log_debug( MODULENAME, "stop: ok" );
@@ -158,13 +155,48 @@ void PlayerSM::stop()
     ASSERT( is_inited() );
 
     state_      = IDLE;
+    job_id_     = 0;
 }
 
-bool PlayerSM::is_playing() const
+void PlayerSM::on_play_file_response( uint32_t job_id )
 {
+    dummy_log_debug( MODULENAME, "on_play_file_response: job_id %u", job_id );
+
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    return state_ == PLAYING;
+    if( state_ != WAIT_PLAY_RESP )
+    {
+        dummy_log_fatal( MODULENAME, "on_play_file_response: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( false );
+        return;
+    }
+
+    dummy_log_debug( MODULENAME, "on_play_file_response: ok" );
+
+    if( job_ )
+    {
+        delete job_;
+        job_    = nullptr;
+    }
+    job_    = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, job_id ) );
+
+    state_  = WAIT_PLAY_START;
+    job_id_ = job_id;
+
+}
+
+void PlayerSM::on_error_response( uint32_t job_id )
+{
+    dummy_log_debug( MODULENAME, "on_error_response: %u", job_id );
+
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    if( state_ != WAIT_PLAY_RESP )
+    {
+        dummy_log_fatal( MODULENAME, "on_play_file_response: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( false );
+        return;
+    }
 }
 
 void PlayerSM::on_play_start( uint32_t call_id )
@@ -173,7 +205,7 @@ void PlayerSM::on_play_start( uint32_t call_id )
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAIT_PLAY_RESP )
+    if( state_ != WAIT_PLAY_START )
     {
         dummy_log_fatal( MODULENAME, "on_play_start: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );
@@ -184,9 +216,9 @@ void PlayerSM::on_play_start( uint32_t call_id )
 
     callback_->consume( voip_service::create_play_file_response( job_id_ ) );
 
-    state_   = PLAYING;
+    state_  = PLAYING;
     job_->cancel();     // cancel timeout job as replay was successfully started
-    job_    = 0L;
+    job_    = nullptr;
     job_id_ = 0;
 }
 
@@ -209,9 +241,9 @@ void PlayerSM::on_play_stop( uint32_t call_id )
     job_id_ = 0;
 }
 
-void PlayerSM::on_play_failed( uint32_t call_id )
+void PlayerSM::on_play_failed( uint32_t job_id )
 {
-    dummy_log_debug( MODULENAME, "on_play_failed: %u", call_id );
+    dummy_log_debug( MODULENAME, "on_play_failed: job_id %u", job_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -227,7 +259,7 @@ void PlayerSM::on_play_failed( uint32_t call_id )
     callback_->consume( voip_service::create_error_response( job_id_, 0, "play failed" ) );
 
     state_  = IDLE;
-    job_    = 0L;       // job_ is not valid after call of invoke()
+    job_    = nullptr;       // job_ is not valid after call of invoke()
     job_id_ = 0;
 }
 

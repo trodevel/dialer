@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 3027 $ $Date:: 2015-12-22 #$ $Author: serge $
 
 #include "str_helper.h"             // self
 
@@ -31,7 +31,7 @@ NAMESPACE_DIALER_START
 
 #define MAP_INSERT_VAL( _m, _val )      _m.insert( Map::value_type( _val ) )
 
-std::string StrHelper::to_string( const Dialer::state_e & l )
+const std::string & StrHelper::to_string( const Dialer::state_e & l )
 {
     typedef std::map< Dialer::state_e, std::string > Map;
     static Map m;
@@ -40,20 +40,20 @@ std::string StrHelper::to_string( const Dialer::state_e & l )
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( UNKNOWN ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( IDLE ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_INITIATE_CALL_RESPONSE ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DIALLING ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( DIALLING ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( RINGING ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_CONNECTION ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( CONNECTED ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DROP_RESPONSE ) );
     }
 
+    static const std::string def("???");
+
     if( 0 == m.count( l ) )
-        return "???";
+        return def;
 
     return m[l];
 }
 
-std::string StrHelper::to_string( const PlayerSM::state_e & l )
+const std::string & StrHelper::to_string( const PlayerSM::state_e & l )
 {
     typedef std::map< PlayerSM::state_e, std::string > Map;
     static Map m;
@@ -61,12 +61,15 @@ std::string StrHelper::to_string( const PlayerSM::state_e & l )
     {
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( UNKNOWN ) );
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( IDLE ) );
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAITING ) );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_RESP ) );
+        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_START ) );
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( PLAYING ) );
     }
 
+    static const std::string def( "UNKNOWN" );
+
     if( 0 == m.count( l ) )
-        return "UNKNOWN";
+        return def;
 
     return m[l];
 }

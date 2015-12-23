@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 2996 $ $Date:: 2015-12-16 #$ $Author: serge $
+// $Revision: 3021 $ $Date:: 2015-12-22 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -56,6 +56,7 @@ public:
         UNKNOWN = 0,
         IDLE,
         WAIT_PLAY_RESP,
+        WAIT_PLAY_START,
         PLAYING,
     };
 
@@ -72,24 +73,25 @@ public:
     // IPlayerSM
     void play_file( uint32_t job_id, uint32_t call_id, const std::string & filename );
     void stop();
-    bool is_playing() const;
 
     // IVoipServiceCallback
+    void on_play_file_response( uint32_t job_id );
+    void on_error_response( uint32_t job_id );
     void on_play_start( uint32_t call_id );
     void on_play_stop( uint32_t call_id );
 
     // called by timer
-    void on_play_failed( uint32_t call_id );
+    void on_play_failed( uint32_t job_id );
 
 private:
 
 private:
-    mutable std::mutex         mutex_;
+    mutable std::mutex          mutex_;
 
     state_e                     state_;
     uint32_t                    job_id_;
 
-    skype_service::SkypeService * sio_;;
+    skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;
     voip_service::IVoipServiceCallback  * callback_;
 

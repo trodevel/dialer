@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1806 $ $Date:: 2015-06-01 #$ $Author: serge $
+// $Revision: 3035 $ $Date:: 2015-12-23 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -27,11 +27,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>           // std::atomic
 #include <vector>           // std::vector
 
-#include "i_dialer_callback.h"          // dialer::IDialerCallback
 #include "dialer.h"                     // dialer::Dialer
-#include "object_factory.h"             // dialer::create_message_t
+#include "../voip_io/object_factory.h"             // voip_service::create_message_t
 
-#include "../voip_io/voip_service.h"    // voip_service::VoipService
 #include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 #include "../scheduler/scheduler.h"     // Scheduler
@@ -41,93 +39,95 @@ namespace sched
 extern unsigned int MODULE_ID;
 }
 
-class Callback: virtual public dialer::IDialerCallback
+class Callback: virtual public voip_service::IVoipServiceCallback
 {
 public:
-    Callback( dialer::IDialer * dialer, sched::Scheduler * sched ):
+    Callback( voip_service::IVoipService * dialer, sched::Scheduler * sched ):
         dialer_( dialer ),
         sched_( sched ),
-        call_id_( 0 )
+        call_id_( 0 ),
+        last_job_id_( 0 )
     {
     }
 
     // interface IVoipServiceCallback
-    void consume( const dialer::DialerCallbackObject * req )
+    void consume( const voip_service::CallbackObject * req )
     {
-        if( typeid( *req ) == typeid( dialer::DialerInitiateCallResponse ) )
+        std::cout << "got " << typeid( *req ).name() << std::endl;
+
+        if( typeid( *req ) == typeid( voip_service::InitiateCallResponse ) )
         {
-            std::cout << "got DialerInitiateCallResponse "
-                    << dynamic_cast< const dialer::DialerInitiateCallResponse *>( req )->call_id
+            std::cout << "got InitiateCallResponse"
+                    << " job_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->job_id
+                    << " call_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->call_id
                     << std::endl;
 
-            call_id_    = dynamic_cast< const dialer::DialerInitiateCallResponse *>( req )->call_id;
+            call_id_    = dynamic_cast< const voip_service::InitiateCallResponse *>( req )->call_id;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerErrorResponse ) )
+        else if( typeid( *req ) == typeid( voip_service::ErrorResponse ) )
         {
-            std::cout << "got DialerErrorResponse "
-                    << dynamic_cast< const dialer::DialerErrorResponse *>( req )->descr
+            std::cout << "got ErrorResponse"
+                    << " job_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->job_id
+                    << " call_id " << dynamic_cast< const voip_service::ErrorResponse *>( req )->descr
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerRejectResponse ) )
+        else if( typeid( *req ) == typeid( voip_service::RejectResponse ) )
         {
-            std::cout << "got DialerRejectResponse "
-                    << dynamic_cast< const dialer::DialerRejectResponse *>( req )->descr
+            std::cout << "got RejectResponse"
+                    << " job_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->job_id
+                    << " " << dynamic_cast< const voip_service::RejectResponse *>( req )->descr
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerDropResponse ) )
+        else if( typeid( *req ) == typeid( voip_service::DropResponse ) )
         {
-            std::cout << "got DialerDropResponse "
-                    << dynamic_cast< const dialer::DialerDropResponse *>( req )->call_id
+            std::cout << "got DropResponse"
+                    << " job_id " << dynamic_cast< const voip_service::DropResponse *>( req )->job_id
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerCallEnd ) )
+        else if( typeid( *req ) == typeid( voip_service::Failed ) )
         {
-            std::cout << "got DialerCallEnd "
-                    << dynamic_cast< const dialer::DialerCallEnd *>( req )->call_id
+            std::cout << "got Failed"
+                    << " call_id " << dynamic_cast< const voip_service::Failed *>( req )->call_id
                     << std::endl;
 
             call_id_    = 0;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerDial ) )
+        else if( typeid( *req ) == typeid( voip_service::ConnectionLost ) )
         {
-            std::cout << "got DialerDial "
-                    << dynamic_cast< const dialer::DialerDial *>( req )->call_id
+            std::cout << "got ConnectionLost"
+                    << " call_id " << dynamic_cast< const voip_service::ConnectionLost *>( req )->call_id
+                    << std::endl;
+
+            call_id_    = 0;
+        }
+        else if( typeid( *req ) == typeid( voip_service::Dial ) )
+        {
+            std::cout << "got Dial"
+                    << " call_id " << dynamic_cast< const voip_service::Dial *>( req )->call_id
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerRing ) )
+        else if( typeid( *req ) == typeid( voip_service::Ring ) )
         {
-            std::cout << "got DialerRing "
-                    << dynamic_cast< const dialer::DialerRing *>( req )->call_id
+            std::cout << "got Ring"
+                    << " call_id " << dynamic_cast< const voip_service::Ring *>( req )->call_id
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerConnect ) )
+        else if( typeid( *req ) == typeid( voip_service::Connected ) )
         {
-            std::cout << "got DialerConnect "
-                    << dynamic_cast< const dialer::DialerConnect *>( req )->call_id
+            std::cout << "got Connected"
+                    << " call_id " << dynamic_cast< const voip_service::Connected *>( req )->call_id
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerCallDuration ) )
+        else if( typeid( *req ) == typeid( voip_service::CallDuration ) )
         {
-            std::cout << "got DialerCallDuration "
-                    << dynamic_cast< const dialer::DialerCallDuration *>( req )->call_id
+            std::cout << "got CallDuration"
+                    << " call_id " << dynamic_cast< const voip_service::CallDuration *>( req )->call_id
                     << std::endl;
         }
-        else if( typeid( *req ) == typeid( dialer::DialerPlayStarted ) )
+        else if( typeid( *req ) == typeid( voip_service::PlayFileResponse ) )
         {
-            std::cout << "got DialerPlayStarted "
-                    << dynamic_cast< const dialer::DialerPlayStarted *>( req )->call_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( dialer::DialerPlayStopped ) )
-        {
-            std::cout << "got DialerPlayStopped "
-                    << dynamic_cast< const dialer::DialerPlayStopped *>( req )->call_id
-                    << std::endl;
-        }
-        else if( typeid( *req ) == typeid( dialer::DialerPlayFailed ) )
-        {
-            std::cout << "got DialerPlayFailed "
-                    << dynamic_cast< const dialer::DialerPlayFailed *>( req )->call_id
+            std::cout << "got PlayFileResponse"
+                    << " job_id " << dynamic_cast< const voip_service::PlayFileResponse *>( req )->job_id
                     << std::endl;
         }
         else
@@ -184,12 +184,17 @@ private:
                 std::string s;
                 stream >> s;
 
-                dialer_->consume( dialer::create_initiate_call_request( s ) );
+                last_job_id_++;
+
+                dialer_->consume( voip_service::create_initiate_call_request( last_job_id_, s ) );
             }
             else if( cmd == "drop" )
             {
                 if( call_id_ != 0 )
-                    dialer_->consume( dialer::create_message_t<dialer::DialerDrop>( call_id_ ) );
+                {
+                    last_job_id_++;
+                    dialer_->consume( voip_service::create_drop_request( last_job_id_, call_id_ ) );
+                }
             }
             else if( cmd == "play" )
             {
@@ -198,7 +203,8 @@ private:
                     std::string filename;
                     stream >> filename;
 
-                    dialer_->consume( dialer::create_play_file( call_id_, filename ) );
+                    last_job_id_++;
+                    dialer_->consume( voip_service::create_play_file_request( last_job_id_, call_id_, filename ) );
                 }
             }
             else if( cmd == "rec" )
@@ -208,7 +214,8 @@ private:
                     std::string filename;
                     stream >> filename;
 
-                    dialer_->consume( dialer::create_record_file( call_id_, filename ) );
+                    last_job_id_++;
+                    dialer_->consume( voip_service::create_record_file_request( last_job_id_, call_id_, filename ) );
                 }
             }
             else
@@ -222,10 +229,12 @@ private:
     }
 
 private:
-    dialer::IDialer     * dialer_;
-    sched::Scheduler    * sched_;
+    voip_service::IVoipService  * dialer_;
+    sched::Scheduler            * sched_;
 
-    std::atomic<int>    call_id_;
+    std::atomic<int>            call_id_;
+
+    uint32_t                    last_job_id_;
 
 };
 
@@ -238,8 +247,7 @@ int main()
 {
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
-    skype_service::SkypeService         service;
-    voip_service::VoipService   voips;
+    skype_service::SkypeService sio;
     dialer::Dialer              dialer;
     sched::Scheduler            sched;
 
@@ -249,7 +257,7 @@ int main()
     sched.init();
 
     {
-        bool b = dialer.init( & voips, & sched );
+        bool b = dialer.init( & sio, & sched );
         if( !b )
         {
             std::cout << "cannot initialize Dialer" << std::endl;
@@ -258,33 +266,21 @@ int main()
     }
 
     {
-        bool b = voips.init( & service );
-        if( !b )
-        {
-            std::cout << "cannot initialize VoipService" << std::endl;
-            return 0;
-        }
-
-        voips.register_callback( & dialer );
-    }
-
-    {
-        bool b = service.init();
+        bool b = sio.init();
 
         if( !b )
         {
-            std::cout << "cannot initialize SkypeService - " << service.get_error_msg() << std::endl;
+            std::cout << "cannot initialize SkypeService - " << sio.get_error_msg() << std::endl;
             return 0;
         }
 
-        service.register_callback( & voips );
+        sio.register_callback( & dialer );
     }
 
 
     Callback test( & dialer, & sched );
     dialer.register_callback( &test );
 
-    voips.start();
     dialer.start();
 
     std::vector< std::thread > tg;
@@ -295,8 +291,7 @@ int main()
     for( auto & t : tg )
         t.join();
 
-    service.shutdown();
-    voips.VoipService::shutdown();
+    sio.shutdown();
     dialer.Dialer::shutdown();
 
     std::cout << "Done! =)" << std::endl;
