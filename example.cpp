@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3035 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3040 $ $Date:: 2015-12-23 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -67,14 +67,14 @@ public:
         else if( typeid( *req ) == typeid( voip_service::ErrorResponse ) )
         {
             std::cout << "got ErrorResponse"
-                    << " job_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->job_id
+                    << " job_id " << dynamic_cast< const voip_service::ErrorResponse *>( req )->job_id
                     << " call_id " << dynamic_cast< const voip_service::ErrorResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::RejectResponse ) )
         {
             std::cout << "got RejectResponse"
-                    << " job_id " << dynamic_cast< const voip_service::InitiateCallResponse *>( req )->job_id
+                    << " job_id " << dynamic_cast< const voip_service::RejectResponse *>( req )->job_id
                     << " " << dynamic_cast< const voip_service::RejectResponse *>( req )->descr
                     << std::endl;
         }
@@ -190,33 +190,24 @@ private:
             }
             else if( cmd == "drop" )
             {
-                if( call_id_ != 0 )
-                {
-                    last_job_id_++;
-                    dialer_->consume( voip_service::create_drop_request( last_job_id_, call_id_ ) );
-                }
+                last_job_id_++;
+                dialer_->consume( voip_service::create_drop_request( last_job_id_, call_id_ ) );
             }
             else if( cmd == "play" )
             {
-                if( call_id_ != 0 )
-                {
-                    std::string filename;
-                    stream >> filename;
+                std::string filename;
+                stream >> filename;
 
-                    last_job_id_++;
-                    dialer_->consume( voip_service::create_play_file_request( last_job_id_, call_id_, filename ) );
-                }
+                last_job_id_++;
+                dialer_->consume( voip_service::create_play_file_request( last_job_id_, call_id_, filename ) );
             }
             else if( cmd == "rec" )
             {
-                if( call_id_ != 0 )
-                {
-                    std::string filename;
-                    stream >> filename;
+                std::string filename;
+                stream >> filename;
 
-                    last_job_id_++;
-                    dialer_->consume( voip_service::create_record_file_request( last_job_id_, call_id_, filename ) );
-                }
+                last_job_id_++;
+                dialer_->consume( voip_service::create_record_file_request( last_job_id_, call_id_, filename ) );
             }
             else
                 std::cout << "ERROR: unknown command '" << cmd << "'" << std::endl;

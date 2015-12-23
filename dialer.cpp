@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3038 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3043 $ $Date:: 2015-12-23 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -173,9 +173,7 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
 
     if( state_ != IDLE )
     {
-        dummy_log_warn( MODULENAME, "handle voip_service::InitiateCallRequest: busy, ignored in state %s", StrHelper::to_string( state_ ).c_str() );
-
-        send_reject_response( req->job_id, 0, "busy, cannot proceed in state " + StrHelper::to_string( state_ ) );
+        send_reject_due_to_wrong_state( req->job_id );
         return;
     }
 
@@ -209,10 +207,7 @@ void Dialer::handle( const voip_service::DropRequest * req )
 
     if( state_ != WAITING_CONNECTION && state_ != CONNECTED )
     {
-        dummy_log_warn( MODULENAME, "handle voip_service::DropRequest: cannot process in state %s", StrHelper::to_string( state_ ).c_str() );
-
-        send_reject_response( req->job_id, 0, "cannot proceed in state " + StrHelper::to_string( state_ ) );
-
+        send_reject_due_to_wrong_state( req->job_id );
         return;
     }
 
@@ -244,8 +239,7 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "handle voip_service::PlayFileRequest: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( 0 );
+        send_reject_due_to_wrong_state( req->job_id );
         return;
     }
 
@@ -267,8 +261,7 @@ void Dialer::handle( const voip_service::RecordFileRequest * req )
 
     if( state_ != CONNECTED )
     {
-        dummy_log_fatal( MODULENAME, "handle voip_service::RecordFileRequest: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
-        ASSERT( 0 );
+        send_reject_due_to_wrong_state( req->job_id );
         return;
     }
 
@@ -1100,6 +1093,16 @@ void Dialer::callback_consume( const voip_service::CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
+}
+
+void Dialer::send_reject_due_to_wrong_state( uint32_t job_id )
+{
+    // called from locked area
+
+    dummy_log_error( MODULENAME, "cannot process request job_id %u in state %s", job_id, StrHelper::to_string( state_ ).c_str() );
+
+    send_reject_response( job_id, 0,
+            "cannot process in state " + StrHelper::to_string( state_ ) );
 }
 
 bool Dialer::send_reject_if_in_request_processing( uint32_t job_id )
