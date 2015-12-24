@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3025 $ $Date:: 2015-12-22 #$ $Author: serge $
+// $Revision: 3050 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -247,7 +247,7 @@ void PlayerSM::on_play_failed( uint32_t job_id )
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != WAIT_PLAY_RESP )
+    if( state_ != WAIT_PLAY_START )
     {
         dummy_log_fatal( MODULENAME, "on_play_failed: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );

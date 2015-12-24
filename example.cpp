@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3040 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3056 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -128,6 +128,12 @@ public:
         {
             std::cout << "got PlayFileResponse"
                     << " job_id " << dynamic_cast< const voip_service::PlayFileResponse *>( req )->job_id
+                    << std::endl;
+        }
+        else if( typeid( *req ) == typeid( voip_service::RecordFileResponse ) )
+        {
+            std::cout << "got RecordFileResponse"
+                    << " job_id " << dynamic_cast< const voip_service::RecordFileResponse *>( req )->job_id
                     << std::endl;
         }
         else

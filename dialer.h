@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3041 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3052 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -139,6 +139,7 @@ private:
     void send_reject_due_to_wrong_state( uint32_t job_id );
     bool send_reject_if_in_request_processing( uint32_t job_id );
     bool ignore_non_response( const skype_service::Event * ev );
+    bool ignore_non_expected_response( const skype_service::Event * ev );
     static const char* decode_failure_reason( uint32_t c );
     void switch_to_ready_if_possible();
     void switch_to_idle_and_cleanup();

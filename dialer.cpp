@@ -19,11 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3043 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3055 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
 #include "../voip_io/object_factory.h"  // voip_service::create_message_t
+#include "../voip_io/str_helper.h"      // voip_service::to_string
 #include "../skype_service/skype_service.h"     // skype_service::SkypeService
 #include "../skype_service/str_helper.h"        // skype_service::StrHelper
 #include "../utils/dummy_logger.h"      // dummy_log
@@ -67,7 +68,7 @@ bool Dialer::init(
 
     sio_        = sw;
     sched_      = sched;
-    state_      = IDLE;
+    state_      = UNKNOWN;
 
     player_.init( sio_, sched );
 
@@ -164,7 +165,7 @@ void Dialer::handle( const servt::IObject* req )
 
 void Dialer::handle( const voip_service::InitiateCallRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::InitiateCallRequest: %s", req->party.c_str() );
+    dummy_log_debug( MODULENAME, "handle voip_service::InitiateCallRequest: %s", voip_service::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -198,7 +199,7 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
 
 void Dialer::handle( const voip_service::DropRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::DropRequest" );
+    dummy_log_debug( MODULENAME, "handle voip_service::DropRequest: %s", voip_service::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -230,7 +231,7 @@ void Dialer::handle( const voip_service::DropRequest * req )
 
 void Dialer::handle( const voip_service::PlayFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::PlayFileRequest" );
+    dummy_log_debug( MODULENAME, "handle voip_service::PlayFileRequest: %s", voip_service::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -246,13 +247,11 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
     ASSERT( is_call_id_valid( req->call_id ) );
 
     player_.play_file( req->job_id, req->call_id, req->filename );
-
-    current_job_id_    = req->job_id;
 }
 
 void Dialer::handle( const voip_service::RecordFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::RecordFileRequest" );
+    dummy_log_debug( MODULENAME, "handle voip_service::RecordFileRequest: %s", voip_service::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -278,7 +277,7 @@ void Dialer::handle( const voip_service::RecordFileRequest * req )
         return;
     }
 
-    current_job_id_ = req->job_id;
+    callback_consume( voip_service::create_record_file_response( req->job_id ) );
 }
 
 void Dialer::handle( const voip_service::ObjectWrap * req )
@@ -316,12 +315,6 @@ void Dialer::handle( const voip_service::ObjectWrap * req )
 
 void Dialer::handle_in_state_unknown( const skype_service::Event * ev )
 {
-}
-
-void Dialer::handle_in_state_idle( const skype_service::Event * ev )
-{
-    // private: no mutex lock
-
     skype_service::Event::type_e id = ev->get_type();
 
     switch( id )
@@ -350,11 +343,64 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
     case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
     case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     case skype_service::Event::ERROR:
+    case skype_service::Event::CHAT:
+    case skype_service::Event::CHATMEMBER:
+    case skype_service::Event::UNDEF:
+    {
+        dummy_log_error( MODULENAME, "handle_in_state_unknown: event %s, unexpected in state %s",
+                skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+        break;
+
+    case skype_service::Event::UNKNOWN:
+    default:
+        on_unknown( "???" );
+        break;
+    }
+}
+
+void Dialer::handle_in_state_idle( const skype_service::Event * ev )
+{
+    // private: no mutex lock
+
+    skype_service::Event::type_e id = ev->get_type();
+
+    switch( id )
+    {
+    case skype_service::Event::CONNSTATUS:
+        handle( static_cast<const skype_service::ConnStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::USERSTATUS:
+        handle( static_cast<const skype_service::UserStatusEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::CURRENTUSERHANDLE:
+        handle( static_cast<const skype_service::CurrentUserHandleEvent*>( ev ) );
+        break;
+
+    case skype_service::Event::USER_ONLINE_STATUS:
+        break;
+
+    case skype_service::Event::CALL:
+    case skype_service::Event::CALL_STATUS:
+    case skype_service::Event::CALL_PSTN_STATUS:
+    case skype_service::Event::CALL_FAILUREREASON:
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
+    case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
+    case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
+    case skype_service::Event::ERROR:
     {
         dummy_log_error( MODULENAME, "handle_in_state_idle: event %s, unexpected in state %s",
                 skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
     }
+        break;
+
+    case skype_service::Event::CALL_DURATION:
+        dummy_log_warn( MODULENAME, "handle_in_state_idle: event %s, unexpected in state %s, probably out-of-order",
+                skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
         break;
 
     case skype_service::Event::UNDEF:
@@ -405,7 +451,7 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
 
     case skype_service::Event::ERROR:
         {
-            if( ignore_non_response( ev ) )
+            if( ignore_non_expected_response( ev ) )
             {
                 return;
             }
@@ -816,7 +862,7 @@ void Dialer::handle_in_w_ical( const skype_service::CallStatusEvent * e )
 
     dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
 
-    if( ignore_non_response( e ) )
+    if( ignore_non_expected_response( e ) )
     {
         return;
     }
@@ -959,7 +1005,7 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
     uint32_t                        call_id = e->get_call_id();
     skype_service::call_status_e    s       = e->get_call_s();
 
-    dummy_log_debug( MODULENAME, "call %u status %s", call_id, skype_service::to_string( s ).c_str() );
+    dummy_log_debug( MODULENAME, "call %u status %s (%u)", call_id, skype_service::to_string( s ).c_str(), s );
 
     switch( s )
     {
@@ -982,12 +1028,12 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
 
     case skype_service::call_status_e::INPROGRESS:
     {
-        if( ignore_non_response( e ) )
+        if( ignore_non_expected_response( e ) )
         {
             return;
         }
 
-        dummy_log_info( MODULENAME, "handle_in_w_drpr: call %u, status %u, ignoring %s",
+        dummy_log_info( MODULENAME, "handle_in_w_drpr: call %u, status %u, ignoring in state %s",
                 call_id_, s, StrHelper::to_string( state_ ).c_str() );
     }
     break;
@@ -1131,6 +1177,14 @@ bool Dialer::ignore_non_response( const skype_service::Event * ev )
 
         return true;
     }
+
+    return false;
+}
+
+bool Dialer::ignore_non_expected_response( const skype_service::Event * ev )
+{
+    if( ignore_non_response( ev ) )
+        return true;
 
     if( ev->get_hash_id() != current_job_id_ )
     {
