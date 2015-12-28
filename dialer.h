@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3052 $ $Date:: 2015-12-24 #$ $Author: serge $
+// $Revision: 3059 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -68,6 +68,7 @@ public:
         WAITING_CONNECTION,
         CONNECTED,
         WAITING_DROP_RESPONSE,
+        WAITING_DROP_RESPONSE_2,    // waiting drop response before connection
     };
 
 public:
@@ -113,6 +114,7 @@ private:
     void handle_in_w_conn( const skype_service::CallStatusEvent * e );
     void handle_in_connected( const skype_service::CallStatusEvent * e );
     void handle_in_w_drpr( const skype_service::CallStatusEvent * e );
+    void handle_in_w_drpr_2( const skype_service::CallStatusEvent * e );
     void handle( const skype_service::CallPstnStatusEvent * e );
     void handle( const skype_service::CallDurationEvent * e );
     void handle( const skype_service::CallFailureReasonEvent * e );
@@ -138,6 +140,7 @@ private:
 
     void send_reject_due_to_wrong_state( uint32_t job_id );
     bool send_reject_if_in_request_processing( uint32_t job_id );
+    bool ignore_response( const skype_service::Event * ev );
     bool ignore_non_response( const skype_service::Event * ev );
     bool ignore_non_expected_response( const skype_service::Event * ev );
     static const char* decode_failure_reason( uint32_t c );

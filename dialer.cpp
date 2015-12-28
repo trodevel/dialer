@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3055 $ $Date:: 2015-12-24 #$ $Author: serge $
+// $Revision: 3061 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -224,7 +224,10 @@ void Dialer::handle( const voip_service::DropRequest * req )
 
     current_job_id_    = req->job_id;
 
-    state_      = WAITING_DROP_RESPONSE;
+    if( state_ == WAITING_CONNECTION )
+        state_      = WAITING_DROP_RESPONSE_2;
+    else /* if( state_ == CONNECTED ) */
+        state_      = WAITING_DROP_RESPONSE;
 
     dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 }
@@ -303,6 +306,7 @@ void Dialer::handle( const voip_service::ObjectWrap * req )
         handle_in_state_connected( ev );
         break;
     case WAITING_DROP_RESPONSE:
+    case WAITING_DROP_RESPONSE_2:
         handle_in_state_w_drpr( ev );
         break;
     default:
@@ -355,7 +359,7 @@ void Dialer::handle_in_state_unknown( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 }
@@ -387,7 +391,6 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
     case skype_service::Event::CALL_STATUS:
     case skype_service::Event::CALL_PSTN_STATUS:
     case skype_service::Event::CALL_FAILUREREASON:
-    case skype_service::Event::CALL_VAA_INPUT_STATUS:
     case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
     case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     case skype_service::Event::ERROR:
@@ -398,6 +401,7 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
     }
         break;
 
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
     case skype_service::Event::CALL_DURATION:
         dummy_log_warn( MODULENAME, "handle_in_state_idle: event %s, unexpected in state %s, probably out-of-order",
                 skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
@@ -413,7 +417,7 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 }
@@ -480,7 +484,7 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 }
@@ -549,7 +553,7 @@ void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 }
@@ -616,7 +620,7 @@ void Dialer::handle_in_state_connected( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 
@@ -646,7 +650,7 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
     case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
     {
-        dummy_log_error( MODULENAME, "handle_in_state_w_ical: event %s, unexpected in state %s",
+        dummy_log_error( MODULENAME, "handle_in_state_w_drpr: event %s, unexpected in state %s",
                 skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
         ASSERT( 0 );
     }
@@ -661,7 +665,10 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
         break;
 
     case skype_service::Event::CALL_STATUS:
-        handle_in_w_drpr( static_cast<const skype_service::CallStatusEvent*>( ev ) );
+        if( state_ == WAITING_DROP_RESPONSE )
+            handle_in_w_drpr( static_cast<const skype_service::CallStatusEvent*>( ev ) );
+        else
+            handle_in_w_drpr_2( static_cast<const skype_service::CallStatusEvent*>( ev ) );
         break;
 
     case skype_service::Event::ERROR:
@@ -689,7 +696,7 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
 
     case skype_service::Event::UNKNOWN:
     default:
-        on_unknown( "???" );
+        on_unknown( skype_service::StrHelper::to_string( id ) );
         break;
     }
 }
@@ -1007,42 +1014,30 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
 
     dummy_log_debug( MODULENAME, "call %u status %s (%u)", call_id, skype_service::to_string( s ).c_str(), s );
 
+    // ignore command response as it carries current status
+    if( ignore_response( e ) )
+    {
+        return;
+    }
+
     switch( s )
     {
 
     case skype_service::call_status_e::FINISHED:
     {
-        /*
-        if( ignore_non_response( e ) )
-        {
-            return;
-        }
-        */
-
         callback_consume( voip_service::create_drop_response( current_job_id_ ) );
 
         switch_to_idle_and_cleanup();
-
     }
         break;
-
-    case skype_service::call_status_e::INPROGRESS:
-    {
-        if( ignore_non_expected_response( e ) )
-        {
-            return;
-        }
-
-        dummy_log_info( MODULENAME, "handle_in_w_drpr: call %u, status %u, ignoring in state %s",
-                call_id_, s, StrHelper::to_string( state_ ).c_str() );
-    }
-    break;
 
     case skype_service::call_status_e::NONE:
     case skype_service::call_status_e::FAILED:
     case skype_service::call_status_e::CANCELLED:
     case skype_service::call_status_e::ROUTING:
     case skype_service::call_status_e::RINGING:
+    case skype_service::call_status_e::INPROGRESS:
+    case skype_service::call_status_e::EARLYMEDIA:
     case skype_service::call_status_e::BUSY:
     case skype_service::call_status_e::REFUSED:
     case skype_service::call_status_e::MISSED:
@@ -1059,6 +1054,71 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
     }
 }
 
+void Dialer::handle_in_w_drpr_2( const skype_service::CallStatusEvent * e )
+{
+    uint32_t                        call_id = e->get_call_id();
+    skype_service::call_status_e    s       = e->get_call_s();
+
+    dummy_log_debug( MODULENAME, "call %u status %s (%u)", call_id, skype_service::to_string( s ).c_str(), s );
+
+    // ignore command response as it carries current status
+    if( ignore_response( e ) )
+    {
+        return;
+    }
+
+    switch( s )
+    {
+
+    case skype_service::call_status_e::CANCELLED:
+    {
+        /*
+        if( ignore_non_response( e ) )
+        {
+            return;
+        }
+        */
+
+        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+
+        switch_to_idle_and_cleanup();
+
+    }
+        break;
+
+    case skype_service::call_status_e::INPROGRESS:
+    case skype_service::call_status_e::EARLYMEDIA:
+    case skype_service::call_status_e::ROUTING:
+    case skype_service::call_status_e::RINGING:
+    {
+        if( ignore_non_expected_response( e ) )
+        {
+            return;
+        }
+
+        dummy_log_info( MODULENAME, "handle_in_w_drpr_2: call %u, status %u, ignoring in state %s",
+                call_id_, s, StrHelper::to_string( state_ ).c_str() );
+    }
+    break;
+
+    case skype_service::call_status_e::NONE:
+    case skype_service::call_status_e::FAILED:
+    case skype_service::call_status_e::FINISHED:
+    case skype_service::call_status_e::BUSY:
+    case skype_service::call_status_e::REFUSED:
+    case skype_service::call_status_e::MISSED:
+    {
+        dummy_log_error( MODULENAME, "handle_in_w_drpr_2: call %u, status %u, unexpected in state %s",
+                call_id_, s, StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+    }
+        break;
+
+    default:
+        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_service::to_string( s ).c_str(), s );
+        break;
+    }
+}
 
 void Dialer::handle( const skype_service::CallPstnStatusEvent * ev )
 {
@@ -1167,6 +1227,21 @@ bool Dialer::send_reject_if_in_request_processing( uint32_t job_id )
             ", currently processing request " + std::to_string( current_job_id_ ) );
 
     return true;
+}
+
+bool Dialer::ignore_response( const skype_service::Event * ev )
+{
+    if( ev->has_hash_id() )
+    {
+        dummy_log_info( MODULENAME, "state %s, ignoring a response notification: %s, job_id %u",
+                StrHelper::to_string( state_ ).c_str(),
+                skype_service::StrHelper::to_string( ev->get_type() ).c_str(),
+                ev->get_hash_id() );
+
+        return true;
+    }
+
+    return false;
 }
 
 bool Dialer::ignore_non_response( const skype_service::Event * ev )
