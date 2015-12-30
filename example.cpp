@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3056 $ $Date:: 2015-12-24 #$ $Author: serge $
+// $Revision: 3086 $ $Date:: 2015-12-30 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -68,7 +68,7 @@ public:
         {
             std::cout << "got ErrorResponse"
                     << " job_id " << dynamic_cast< const voip_service::ErrorResponse *>( req )->job_id
-                    << " call_id " << dynamic_cast< const voip_service::ErrorResponse *>( req )->descr
+                    << " " << dynamic_cast< const voip_service::ErrorResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::RejectResponse ) )
