@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3147 $ $Date:: 2016-01-08 #$ $Author: serge $
+// $Revision: 3150 $ $Date:: 2016-01-09 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -680,7 +680,7 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
 
             dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
 
-            callback_consume( voip_service::create_connection_lost( call_id_, voip_service::ConnectionLost::UNDEF, errorcode, "ERROR: " + descr ) );
+            callback_consume( voip_service::create_connection_lost( call_id_, voip_service::ConnectionLost::FAILED, errorcode, "ERROR: " + descr ) );
 
             switch_to_idle_and_cleanup();
         }
@@ -965,13 +965,13 @@ void Dialer::handle_in_connected( const skype_service::CallStatusEvent * e )
     switch( s )
     {
     case skype_service::call_status_e::CANCELLED:
-        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::CANCELLED, 0, "cancelled by user" ) );
+        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FINISHED, 0, "cancelled by user" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
-            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
+            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, pstn_status_, "PSTN: " + pstn_status_msg_ ) );
         else
             callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, 0, "cancelled by user" ) );
 

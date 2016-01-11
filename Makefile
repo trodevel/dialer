@@ -3,6 +3,8 @@
 
 ###################################################################
 
+include Makefile.inc
+
 VER := 0
 
 MODE ?= debug
@@ -16,7 +18,7 @@ EXT_LIBS=$(BOOST_LIBS) $(GDK_LIB)
 
 PROJECT := dialer
 
-LIBNAME=libdialer
+LIBNAME=lib$(PROJECT)
 
 ###################################################################
 
@@ -42,28 +44,11 @@ endif
 
 ###################################################################
 
-CC=gcc
-
-LDSHARED=gcc
-CPP=gcc -E
 INCL = -I$(BOOST_INC) -I.
+#INCL = -I.
 
 
 STATICLIB=$(LIBNAME).a
-SHAREDLIB=
-SHAREDLIBV=
-SHAREDLIBM=
-LIBS=$(STATICLIB) $(SHAREDLIBV)
-
-AR=ar rc
-RANLIB=ranlib
-LDCONFIG=ldconfig
-LDSHAREDLIBC=-lc
-TAR=tar
-SHELL=/bin/sh
-EXE=
-
-#vpath %.cpp .
 
 SRCC = dialer.cpp str_helper.cpp player_sm.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
@@ -94,15 +79,13 @@ $(TARGET): $(BINDIR) $(BINDIR)/$(TARGET)
 	ln -sf $(BINDIR)/$(TARGET) $(TARGET)
 	@echo "$@ uptodate - ${MODE}"
 
-$(BINDIR)/$(TARGET): $(LIBS) $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB)
+$(BINDIR)/$(TARGET): $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB) $(LIB_NAMES)
 	$(CC) $(CFLAGS) -o $@ $(OBJDIR)/$(TARGET).o $(BINDIR)/$(LIBNAME).a $(LIBS) $(EXT_LIBS) $(LFLAGS_TEST)
 
-$(LIBS):
-	for s in $(LIB_NAMES); do \
-		cd ../$$s; make; cd ../$(PROJECT); \
-		ln -sf ../../$$s/$(BINDIR)/lib$$s.a $(BINDIR); \
-		done;
-	
+$(LIB_NAMES):
+	make -C ../$@
+	ln -sf ../../$@/$(BINDIR)/lib$@.a $(BINDIR)
+
 $(BINDIR):
 	@ mkdir -p $(OBJDIR)
 	@ mkdir -p $(BINDIR)
@@ -110,3 +93,7 @@ $(BINDIR):
 clean:
 	#rm $(OBJDIR)/*.o *~ $(TARGET)
 	rm $(OBJDIR)/*.o $(TARGET) $(BINDIR)/$(TARGET) $(BINDIR)/$(STATICLIB)
+
+cleanall: clean
+
+.PHONY: all $(LIB_NAMES)
