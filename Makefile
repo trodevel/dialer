@@ -11,6 +11,22 @@ MODE ?= debug
 
 ###################################################################
 
+BOOST_PATH := $(shell echo $$BOOST_PATH)
+
+ifeq (,$(BOOST_PATH))
+    $(error 'please define path to boost $$BOOST_PATH')
+endif
+
+###################################################################
+
+BOOST_INC=$(BOOST_PATH)
+BOOST_LIB_PATH=$(BOOST_PATH)/stage/lib
+
+BOOST_LIB_NAMES := system
+BOOST_LIBS = $(patsubst %,$(BOOST_LIB_PATH)/libboost_%.a,$(BOOST_LIB_NAMES))
+
+###################################################################
+
 GDK_LIB=$(shell pkg-config --libs dbus-1)
 EXT_LIBS=$(BOOST_LIBS) $(GDK_LIB)
 
@@ -53,7 +69,7 @@ STATICLIB=$(LIBNAME).a
 SRCC = dialer.cpp str_helper.cpp player_sm.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
-LIB_NAMES = skype_service skype_io utils scheduler
+LIB_NAMES = skype_service skype_io utils scheduler tcp_dtmf_detector tcp_data_receiver dtmf_detector
 LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
 
 all: static

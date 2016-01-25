@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3150 $ $Date:: 2016-01-09 #$ $Author: serge $
+// $Revision: 3287 $ $Date:: 2016-01-25 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -39,11 +39,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_DIALER_START
 
+struct DetectedTone: public servt::IObject
+{
+    dtmf::tone_e tone;
+};
+
 class Dialer;
 
 Dialer::Dialer():
     ServerBase( this ),
     state_( UNKNOWN ), sio_( 0L ), sched_( 0L ), callback_( 0L ),
+    data_port_( 0 ),
     current_job_id_( 0 ),
     call_id_( 0 ),
     cs_( skype_service::conn_status_e::NONE ),
@@ -59,7 +65,8 @@ Dialer::~Dialer()
 
 bool Dialer::init(
         skype_service::SkypeService * sw,
-        sched::IScheduler           * sched )
+        sched::IScheduler           * sched,
+        uint16_t                    data_port )
 {
 	MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -69,8 +76,11 @@ bool Dialer::init(
     sio_        = sw;
     sched_      = sched;
     state_      = UNKNOWN;
+    data_port_  = data_port;
 
     player_.init( sio_, sched );
+
+    dummy_log_info( MODULENAME, "init: port %u", data_port );
 
     return true;
 }
@@ -130,6 +140,16 @@ void Dialer::consume( const skype_service::Event * e )
     ServerBase::consume( ew );
 }
 
+// interface dtmf::IDtmfDetectorCallback
+void Dialer::on_detect( dtmf::tone_e button )
+{
+    auto ev = new DetectedTone;
+
+    ev->tone = button;
+
+    ServerBase::consume( ev );
+}
+
 void Dialer::handle( const servt::IObject* req )
 {
     if( typeid( *req ) == typeid( voip_service::InitiateCallRequest ) )
@@ -151,6 +171,10 @@ void Dialer::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( voip_service::ObjectWrap ) )
     {
         handle( dynamic_cast< const voip_service::ObjectWrap *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( DetectedTone ) )
+    {
+        handle( dynamic_cast< const DetectedTone *>( req ) );
     }
     else
     {
@@ -922,6 +946,18 @@ void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
 
         dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 
+        if( data_port_ != 0 )
+        {
+            dummy_log_debug( MODULENAME, "redirected input data to port %u", data_port_ );
+
+            bool b = sio_->alter_call_set_output_port( call_id, data_port_ );
+
+            if( b == false )
+            {
+                dummy_log_error( MODULENAME, "failed to redirect input data to port %u", data_port_ );
+            }
+        }
+
         break;
 
     case skype_service::call_status_e::NONE:
@@ -1153,6 +1189,29 @@ void Dialer::handle( const skype_service::CallFailureReasonEvent * e )
     failure_reason_msg_ = decode_failure_reason( failure_reason_ );
 }
 
+void Dialer::handle( const DetectedTone * e )
+{
+    dummy_log_info( MODULENAME, "detected tone %u", e->tone );
+
+    switch( state_ )
+    {
+    case CONNECTED:
+    {
+        auto tone = decode_tone( e->tone );
+
+        auto ev = voip_service::create_dtmf_tone( call_id_, tone );
+
+        callback_consume( ev );
+    }
+        break;
+    default:
+        dummy_log_error( MODULENAME, "handle: unexpected in state %s",
+                StrHelper::to_string( state_ ).c_str() );
+        break;
+    }
+
+}
+
 const char* Dialer::decode_failure_reason( const uint32_t c )
 {
     static const char* table[] =
@@ -1178,6 +1237,36 @@ const char* Dialer::decode_failure_reason( const uint32_t c )
         return "";
 
     return table[ c ];
+}
+
+voip_service::DtmfTone::tone_e Dialer::decode_tone( dtmf::tone_e tone )
+{
+    static const voip_service::DtmfTone::tone_e table[] =
+    {
+        voip_service::DtmfTone::tone_e::TONE_0,
+        voip_service::DtmfTone::tone_e::TONE_1,
+        voip_service::DtmfTone::tone_e::TONE_2,
+        voip_service::DtmfTone::tone_e::TONE_3,
+        voip_service::DtmfTone::tone_e::TONE_4,
+        voip_service::DtmfTone::tone_e::TONE_5,
+        voip_service::DtmfTone::tone_e::TONE_6,
+        voip_service::DtmfTone::tone_e::TONE_7,
+        voip_service::DtmfTone::tone_e::TONE_8,
+        voip_service::DtmfTone::tone_e::TONE_9,
+        voip_service::DtmfTone::tone_e::TONE_A,
+        voip_service::DtmfTone::tone_e::TONE_B,
+        voip_service::DtmfTone::tone_e::TONE_C,
+        voip_service::DtmfTone::tone_e::TONE_D,
+        voip_service::DtmfTone::tone_e::TONE_STAR,
+        voip_service::DtmfTone::tone_e::TONE_HASH
+    };
+
+    if( tone >= dtmf::tone_e::TONE_0 && tone <= dtmf::tone_e::TONE_HASH )
+    {
+        return table[ static_cast<uint16_t>( tone ) ];
+    }
+
+    return voip_service::DtmfTone::tone_e::TONE_A;
 }
 
 bool Dialer::is_call_id_valid( uint32_t call_id ) const

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3059 $ $Date:: 2015-12-24 #$ $Author: serge $
+// $Revision: 3286 $ $Date:: 2016-01-25 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -35,6 +35,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_service/events.h"            // ConnStatusEvent, ...
 #include "../servt/server_t.h"                  // ServerT
 #include "../threcon/i_controllable.h"          // IControllable
+#include "../dtmf_detector/IDtmfDetectorCallback.hpp"   // IDtmfDetectorCallback
 #include "player_sm.h"                          // PlayerSM
 
 
@@ -48,6 +49,7 @@ class IScheduler;
 NAMESPACE_DIALER_START
 
 class Dialer;
+class DetectedTone;
 
 typedef servt::ServerT< const servt::IObject*, Dialer> ServerBase;
 
@@ -55,7 +57,8 @@ class Dialer:
         public ServerBase,
         virtual public voip_service::IVoipService,
         virtual public skype_service::ICallback,
-        virtual public threcon::IControllable
+        virtual public threcon::IControllable,
+        virtual public dtmf::IDtmfDetectorCallback
 {
     friend ServerBase;
 
@@ -77,7 +80,8 @@ public:
 
     bool init(
             skype_service::SkypeService * sw,
-            sched::IScheduler           * sched );
+            sched::IScheduler           * sched,
+            uint16_t                    data_port = 0 );
 
     bool register_callback( voip_service::IVoipServiceCallback * callback );
 
@@ -91,9 +95,11 @@ public:
     // interface skype_service::ICallback
     virtual void consume( const skype_service::Event * e );
 
+    // interface dtmf::IDtmfDetectorCallback
+    virtual void on_detect( dtmf::tone_e button );
+
     // interface IControllable
     bool shutdown();
-
 
 private:
     void handle( const servt::IObject* req );
@@ -118,6 +124,8 @@ private:
     void handle( const skype_service::CallPstnStatusEvent * e );
     void handle( const skype_service::CallDurationEvent * e );
     void handle( const skype_service::CallFailureReasonEvent * e );
+
+    void handle( const DetectedTone * ev );
 
     void on_unknown( const std::string & s );
 
@@ -147,6 +155,8 @@ private:
     void switch_to_ready_if_possible();
     void switch_to_idle_and_cleanup();
 
+    static voip_service::DtmfTone::tone_e decode_tone( dtmf::tone_e tone );
+
 private:
     mutable std::mutex          mutex_;
 
@@ -155,6 +165,7 @@ private:
     skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;
     voip_service::IVoipServiceCallback  * callback_;
+    uint16_t                    data_port_;
 
     uint32_t                    current_job_id_;
     uint32_t                    call_id_;

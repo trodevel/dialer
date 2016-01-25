@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3086 $ $Date:: 2015-12-30 #$ $Author: serge $
+// $Revision: 3289 $ $Date:: 2016-01-25 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -33,6 +33,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 #include "../scheduler/scheduler.h"     // Scheduler
+#include "../tcp_dtmf_detector/tcp_dtmf_detector.h"  // tcp_dtmf_detector
+
 
 namespace sched
 {
@@ -42,9 +44,11 @@ extern unsigned int MODULE_ID;
 class Callback: virtual public voip_service::IVoipServiceCallback
 {
 public:
-    Callback( voip_service::IVoipService * dialer, sched::Scheduler * sched ):
+    Callback( voip_service::IVoipService * dialer, sched::Scheduler * sched,
+            tcp_dtmf_detector::TcpDtmfDetector * detector ):
         dialer_( dialer ),
         sched_( sched ),
+        detector_( detector ),
         call_id_( 0 ),
         last_job_id_( 0 )
     {
@@ -124,6 +128,14 @@ public:
                     << " call_id " << dynamic_cast< const voip_service::CallDuration *>( req )->call_id
                     << std::endl;
         }
+        else if( typeid( *req ) == typeid( voip_service::DtmfTone ) )
+        {
+            std::cout << "got DtmfTone"
+                    << " call_id " << dynamic_cast< const voip_service::DtmfTone *>( req )->call_id
+                    << " tone " << static_cast<uint16_t>(
+                            dynamic_cast< const voip_service::DtmfTone *>( req )->tone )
+                    << std::endl;
+        }
         else if( typeid( *req ) == typeid( voip_service::PlayFileResponse ) )
         {
             std::cout << "got PlayFileResponse"
@@ -170,6 +182,7 @@ public:
 
         std::cout << "exiting ..." << std::endl;
 
+        detector_->shutdown();
         sched_->shutdown();
     }
 
@@ -228,6 +241,7 @@ private:
 private:
     voip_service::IVoipService  * dialer_;
     sched::Scheduler            * sched_;
+    tcp_dtmf_detector::TcpDtmfDetector  * detector_;
 
     std::atomic<int>            call_id_;
 
@@ -248,13 +262,15 @@ int main()
     dialer::Dialer              dialer;
     sched::Scheduler            sched;
 
+    uint16_t                    port = 3217;
+
     dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
 
     sched.load_config();
     sched.init();
 
     {
-        bool b = dialer.init( & sio, & sched );
+        bool b = dialer.init( & sio, & sched, port );
         if( !b )
         {
             std::cout << "cannot initialize Dialer" << std::endl;
@@ -274,8 +290,11 @@ int main()
         sio.register_callback( & dialer );
     }
 
+    tcp_dtmf_detector::TcpDtmfDetector detector( 16000 );
 
-    Callback test( & dialer, & sched );
+    detector.init( &dialer, port );
+
+    Callback test( & dialer, & sched, & detector );
     dialer.register_callback( &test );
 
     dialer.start();
@@ -284,6 +303,7 @@ int main()
 
     tg.push_back( std::thread( std::bind( &Callback::control_thread, &test ) ) );
     tg.push_back( std::thread( std::bind( &scheduler_thread, &sched ) ) );
+    tg.push_back( std::thread( std::bind( &tcp_dtmf_detector::TcpDtmfDetector::worker, &detector ) ) );
 
     for( auto & t : tg )
         t.join();

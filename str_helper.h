@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3027 $ $Date:: 2015-12-22 #$ $Author: serge $
+// $Revision: 3198 $ $Date:: 2016-01-18 #$ $Author: serge $
 
 #include "namespace_lib.h"      // NAMESPACE_DIALER_START
 #include "dialer.h"             // enums
