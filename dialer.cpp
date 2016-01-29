@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3287 $ $Date:: 2016-01-25 #$ $Author: serge $
+// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -39,7 +39,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_DIALER_START
 
-struct DetectedTone: public servt::IObject
+struct DetectedTone: public workt::IObject
 {
     dtmf::tone_e tone;
 };
@@ -47,7 +47,7 @@ struct DetectedTone: public servt::IObject
 class Dialer;
 
 Dialer::Dialer():
-    ServerBase( this ),
+    WorkerBase( this ),
     state_( UNKNOWN ), sio_( 0L ), sched_( 0L ), callback_( 0L ),
     data_port_( 0 ),
     current_job_id_( 0 ),
@@ -127,7 +127,7 @@ Dialer::state_e Dialer::get_state() const
 // interface IVoipService
 void Dialer::consume( const voip_service::Object * req )
 {
-    ServerBase::consume( req );
+    WorkerBase::consume( req );
 }
 
 // interface skype_service::ISkypeCallback
@@ -137,7 +137,7 @@ void Dialer::consume( const skype_service::Event * e )
 
     ew->ptr = e;
 
-    ServerBase::consume( ew );
+    WorkerBase::consume( ew );
 }
 
 // interface dtmf::IDtmfDetectorCallback
@@ -147,10 +147,10 @@ void Dialer::on_detect( dtmf::tone_e button )
 
     ev->tone = button;
 
-    ServerBase::consume( ev );
+    WorkerBase::consume( ev );
 }
 
-void Dialer::handle( const servt::IObject* req )
+void Dialer::handle( const workt::IObject* req )
 {
     if( typeid( *req ) == typeid( voip_service::InitiateCallRequest ) )
     {
@@ -802,7 +802,7 @@ bool Dialer::shutdown()
     if( !is_inited__() )
         return false;
 
-    bool b = ServerBase::shutdown();
+    bool b = WorkerBase::shutdown();
 
     return b;
 }

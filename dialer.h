@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3286 $ $Date:: 2016-01-25 #$ $Author: serge $
+// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -33,7 +33,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../voip_io/objects.h"                 // InitiateCallResponse
 #include "../skype_service/i_callback.h"        // ICallback
 #include "../skype_service/events.h"            // ConnStatusEvent, ...
-#include "../servt/server_t.h"                  // ServerT
+#include "../workt/worker_t.h"                  // WorkerT
 #include "../threcon/i_controllable.h"          // IControllable
 #include "../dtmf_detector/IDtmfDetectorCallback.hpp"   // IDtmfDetectorCallback
 #include "player_sm.h"                          // PlayerSM
@@ -51,16 +51,16 @@ NAMESPACE_DIALER_START
 class Dialer;
 class DetectedTone;
 
-typedef servt::ServerT< const servt::IObject*, Dialer> ServerBase;
+typedef workt::WorkerT< const workt::IObject*, Dialer> WorkerBase;
 
 class Dialer:
-        public ServerBase,
+        public WorkerBase,
         virtual public voip_service::IVoipService,
         virtual public skype_service::ICallback,
         virtual public threcon::IControllable,
         virtual public dtmf::IDtmfDetectorCallback
 {
-    friend ServerBase;
+    friend WorkerBase;
 
 public:
     enum state_e
@@ -102,7 +102,7 @@ public:
     bool shutdown();
 
 private:
-    void handle( const servt::IObject* req );
+    void handle( const workt::IObject* req );
 
     // for interface IVoipService
     void handle( const voip_service::InitiateCallRequest * req );
