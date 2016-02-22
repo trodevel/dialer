@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 3442 $ $Date:: 2016-02-21 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -671,6 +671,29 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
         break;
 
     case skype_service::Event::CALL_VAA_INPUT_STATUS:
+    {
+        auto e = static_cast<const skype_service::CallVaaInputStatusEvent *>( ev );
+
+        uint32_t n  = e->get_call_id();
+        uint32_t s  = e->get_par_int();
+
+        dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
+
+        if( s )
+        {
+            // play start is really not expected while waiting for drop response
+            dummy_log_error( MODULENAME, "handle_in_state_w_drpr: event %s, unexpected in state %s",
+                    skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
+            ASSERT( 0 );
+        }
+        else
+        {
+            // play end may come, because the player doesn't wait for it
+            dummy_log_debug( MODULENAME, "handle_in_state_w_drpr: event %s, unexpected in state %s, ignored",
+                    skype_service::StrHelper::to_string( id ).c_str(), StrHelper::to_string( state_ ).c_str() );
+        }
+    }
+    break;
     case skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE:
     case skype_service::Event::ALTER_CALL_SET_INPUT_FILE:
     {
