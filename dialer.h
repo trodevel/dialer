@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 4429 $ $Date:: 2016-09-19 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -98,6 +98,8 @@ public:
     // interface dtmf::IDtmfDetectorCallback
     virtual void on_detect( dtmf::tone_e button );
 
+    void start();
+
     // interface IControllable
     bool shutdown();
 
@@ -156,6 +158,15 @@ private:
     void switch_to_idle_and_cleanup();
 
     static voip_service::DtmfTone::tone_e decode_tone( dtmf::tone_e tone );
+
+    enum class party_e
+    {
+        UNKNOWN,
+        NUMBER,
+        SYMBOLIC
+    };
+    static party_e get_party_type( const std::string & inp );
+    static bool transform_party( const std::string & inp, std::string & outp );
 
 private:
     mutable std::mutex          mutex_;

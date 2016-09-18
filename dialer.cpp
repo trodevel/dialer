@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3442 $ $Date:: 2016-02-21 #$ $Author: serge $
+// $Revision: 4429 $ $Date:: 2016-09-19 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -32,6 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/assert.h"            // ASSERT
 
 #include "str_helper.h"                 // StrHelper
+#include "regex_match.h"                // regex_match
 
 #include "namespace_lib.h"              // NAMESPACE_DIALER_START
 
@@ -202,7 +203,20 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
         return;
     }
 
-    bool b = sio_->call( req->party, req->job_id );
+    std::string party;
+
+    if( transform_party( req->party, party ) == false )
+    {
+        dummy_log_error( MODULENAME, "invalid number format: %s", req->party.c_str() );
+
+        callback_consume( voip_service::create_error_response( req->job_id, 0, "invalid number format: " + req->party ) );
+
+        return;
+    }
+
+    dummy_log_debug( MODULENAME, "transformed party: %s into %s", req->party.c_str(), party.c_str() );
+
+    bool b = sio_->call( party, req->job_id );
 
     if( b == false )
     {
@@ -816,6 +830,13 @@ void Dialer::forward_to_player( const skype_service::Event * ev )
     }
 }
 
+void Dialer::start()
+{
+    dummy_log_debug( MODULENAME, "start()" );
+
+    WorkerBase::start();
+}
+
 bool Dialer::shutdown()
 {
     dummy_log_debug( MODULENAME, "shutdown()" );
@@ -825,9 +846,9 @@ bool Dialer::shutdown()
     if( !is_inited__() )
         return false;
 
-    bool b = WorkerBase::shutdown();
+    WorkerBase::shutdown();
 
-    return b;
+    return true;
 }
 
 void Dialer::handle( const skype_service::ConnStatusEvent * e )
@@ -1290,6 +1311,35 @@ voip_service::DtmfTone::tone_e Dialer::decode_tone( dtmf::tone_e tone )
     }
 
     return voip_service::DtmfTone::tone_e::TONE_A;
+}
+
+Dialer::party_e Dialer::get_party_type( const std::string & inp )
+{
+    if( regex_match( inp, "^\\+[1-9]+[0-9]*$") )
+        return party_e::NUMBER;
+    if ( regex_match( inp, "^[a-zA-Z][a-zA-Z0-9_]*$") )
+        return party_e::SYMBOLIC;
+
+    return party_e::UNKNOWN;
+}
+
+bool Dialer::transform_party( const std::string & inp, std::string & outp )
+{
+    auto party_type = get_party_type( inp );
+
+    if( party_type == party_e::NUMBER )
+    {
+        outp = "00" + inp.substr( 1 );
+        return true;
+    }
+
+    if( party_type == party_e::SYMBOLIC )
+    {
+        outp = inp;
+        return true;
+    }
+
+    return false;
 }
 
 bool Dialer::is_call_id_valid( uint32_t call_id ) const
