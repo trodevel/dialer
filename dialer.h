@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4429 $ $Date:: 2016-09-19 #$ $Author: serge $
+// $Revision: 4745 $ $Date:: 2016-10-08 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -125,6 +125,7 @@ private:
     void handle_in_w_drpr_2( const skype_service::CallStatusEvent * e );
     void handle( const skype_service::CallPstnStatusEvent * e );
     void handle( const skype_service::CallDurationEvent * e );
+    void handle( const skype_service::VoicemailDurationEvent * e );
     void handle( const skype_service::CallFailureReasonEvent * e );
 
     void handle( const DetectedTone * ev );

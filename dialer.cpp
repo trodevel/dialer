@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4429 $ $Date:: 2016-09-19 #$ $Author: serge $
+// $Revision: 4745 $ $Date:: 2016-10-08 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -615,6 +615,10 @@ void Dialer::handle_in_state_connected( const skype_service::Event * ev )
         handle( static_cast<const skype_service::CallDurationEvent*>( ev ) );
         break;
 
+    case skype_service::Event::VOICEMAIL_DURATION:
+        handle( static_cast<const skype_service::VoicemailDurationEvent*>( ev ) );
+        break;
+
     case skype_service::Event::CALL_PSTN_STATUS:
         handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
         break;
@@ -984,6 +988,12 @@ void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
         callback_consume( voip_service::create_message_t<voip_service::Ring>( call_id ) );
         break;
 
+    case skype_service::call_status_e::VM_RECORDING:
+        callback_consume( voip_service::create_message_t<voip_service::Connected>( call_id ) );
+        state_          = CONNECTED;
+        dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
+        break;
+
     case skype_service::call_status_e::INPROGRESS:
         callback_consume( voip_service::create_message_t<voip_service::Connected>( call_id ) );
         state_          = CONNECTED;
@@ -1111,6 +1121,14 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
     }
         break;
 
+
+    case skype_service::call_status_e::VM_SENT:
+        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+
+        switch_to_idle_and_cleanup();
+        break;
+
+
     case skype_service::call_status_e::NONE:
     case skype_service::call_status_e::FAILED:
     case skype_service::call_status_e::CANCELLED:
@@ -1218,6 +1236,13 @@ void Dialer::handle( const skype_service::CallPstnStatusEvent * ev )
 void Dialer::handle( const skype_service::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
+
+    callback_consume( voip_service::create_call_duration( e->get_call_id(), e->get_par_int() ) );
+}
+
+void Dialer::handle( const skype_service::VoicemailDurationEvent * e )
+{
+    dummy_log_debug( MODULENAME, "call %u voicemail dur %u", e->get_call_id(), e->get_par_int() );
 
     callback_consume( voip_service::create_call_duration( e->get_call_id(), e->get_par_int() ) );
 }
