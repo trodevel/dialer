@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4745 $ $Date:: 2016-10-08 #$ $Author: serge $
+// $Revision: 4809 $ $Date:: 2016-10-11 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -50,6 +50,7 @@ NAMESPACE_DIALER_START
 
 class Dialer;
 class DetectedTone;
+class ObjectWrap;
 
 typedef workt::WorkerT< const workt::IObject*, Dialer> WorkerBase;
 
@@ -111,7 +112,7 @@ private:
     void handle( const voip_service::DropRequest * req );
     void handle( const voip_service::PlayFileRequest * req );
     void handle( const voip_service::RecordFileRequest * req );
-    void handle( const voip_service::ObjectWrap * req );
+    void handle( const ObjectWrap * req );
 
     // interface skype_service::ICallback
     void handle( const skype_service::ConnStatusEvent * e );
