@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4809 $ $Date:: 2016-10-11 #$ $Author: serge $
+// $Revision: 4816 $ $Date:: 2016-10-12 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -450,6 +450,7 @@ void Dialer::handle_in_state_idle( const skype_service::Event * ev )
 //    else if( typeid( *ev ) == typeid( skype_service::UNDEF:
 //        break;
     else if(
+            ( typeid( *ev ) == typeid( skype_service::UserEvent) ) ||
             ( typeid( *ev ) == typeid( skype_service::ChatEvent) ) ||
             ( typeid( *ev ) == typeid( skype_service::ChatMemberEvent ) ) )
     {
@@ -588,6 +589,10 @@ void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
             ( typeid( *ev ) == typeid( skype_service::ChatMemberEvent ) ) )
     {
         // simply ignore
+    }
+    else if( typeid( *ev ) == typeid( skype_service::VoicemailDurationEvent ) )
+    {
+        // simply ignored
     }
     else if( typeid( *ev ) == typeid( skype_service::UnknownEvent ) )
     {
@@ -1008,6 +1013,7 @@ void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
         break;
 
     case skype_service::call_status_e::FAILED:
+    case skype_service::call_status_e::VM_FAILED:
         callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "call failed" ) );
         switch_to_idle_and_cleanup();
         break;

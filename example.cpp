@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3306 $ $Date:: 2016-01-28 #$ $Author: serge $
+// $Revision: 4812 $ $Date:: 2016-10-11 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -257,6 +257,7 @@ int main()
     dialer::Dialer              dialer;
     sched::Scheduler            sched;
 
+    sched::MODULE_ID        = dummy_logger::register_module( "Scheduler" );
     dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
 
     sched.load_config();
