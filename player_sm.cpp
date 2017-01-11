@@ -19,16 +19,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3198 $ $Date:: 2016-01-18 #$ $Author: serge $
+// $Revision: 5546 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
 #include <functional>                   // std::bind
 
-#include "../voip_io/i_voip_service.h"  // IVoipService
-#include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
+#include "../simple_voip/i_simple_voip.h"  // IVoipService
+#include "../simple_voip/i_simple_voip_callback.h" // ISimpleVoipCallback
 #include "../skype_service/skype_service.h"     // skype_service::SkypeService
-#include "../voip_io/object_factory.h"  // voip_service::create_play_file
+#include "../simple_voip/object_factory.h"  // simple_voip::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
@@ -75,7 +75,7 @@ bool PlayerSM::init( skype_service::SkypeService * sw, sched::IScheduler * sched
 }
 
 
-bool PlayerSM::register_callback( voip_service::IVoipServiceCallback  * callback )
+bool PlayerSM::register_callback( simple_voip::ISimpleVoipCallback  * callback )
 {
     if( callback == 0L )
         return false;
@@ -120,7 +120,7 @@ void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string &
     {
         dummy_log_error( MODULENAME, "failed setting input file: %s", filename.c_str() );
 
-        callback_->consume( voip_service::create_error_response( job_id, 0, "failed setting input file: " + filename ) );
+        callback_->consume( simple_voip::create_error_response( job_id, 0, "failed setting input file: " + filename ) );
 
         return;
     }
@@ -214,7 +214,7 @@ void PlayerSM::on_play_start( uint32_t call_id )
 
     dummy_log_debug( MODULENAME, "on_play_start: ok" );
 
-    callback_->consume( voip_service::create_play_file_response( job_id_ ) );
+    callback_->consume( simple_voip::create_play_file_response( job_id_ ) );
 
     state_  = PLAYING;
     job_->cancel();     // cancel timeout job as replay was successfully started
@@ -256,7 +256,7 @@ void PlayerSM::on_play_failed( uint32_t job_id )
 
     dummy_log_debug( MODULENAME, "on_play_failed: ok" );
 
-    callback_->consume( voip_service::create_error_response( job_id_, 0, "play failed" ) );
+    callback_->consume( simple_voip::create_error_response( job_id_, 0, "play failed" ) );
 
     state_  = IDLE;
     job_    = nullptr;       // job_ is not valid after call of invoke()

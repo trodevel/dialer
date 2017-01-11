@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3198 $ $Date:: 2016-01-18 #$ $Author: serge $
+// $Revision: 5531 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #include "str_helper.h"             // self
 
@@ -42,8 +42,8 @@ const std::string & StrHelper::to_string( const Dialer::state_e & l )
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_INITIATE_CALL_RESPONSE ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_CONNECTION ) );
         MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( CONNECTED ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DROP_RESPONSE ) );
-        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( WAITING_DROP_RESPONSE_2 ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( CANCELED_IN_C ) );
+        MAP_INSERT_VAL( m, Dialer:: TUPLE_VAL_STR( CANCELED_IN_WC ) );
     }
 
     static const std::string def("???");

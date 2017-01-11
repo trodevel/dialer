@@ -19,12 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4816 $ $Date:: 2016-10-12 #$ $Author: serge $
+// $Revision: 5538 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
-#include "../voip_io/object_factory.h"  // voip_service::create_message_t
-#include "../voip_io/str_helper.h"      // voip_service::to_string
+#include "../simple_voip/object_factory.h"      // simple_voip::create_message_t
+#include "../voip_io/str_helper.h"      // simple_voip::to_string
 #include "../skype_service/skype_service.h"     // skype_service::SkypeService
 #include "../skype_service/str_helper.h"        // skype_service::to_string
 #include "../utils/dummy_logger.h"      // dummy_log
@@ -49,6 +49,12 @@ struct DetectedTone: public workt::IObject
 struct ObjectWrap: public workt::IObject
 {
     const skype_service::Event *ev;
+};
+
+// object wrapper for simple_voip::ForwardObject messages
+struct SimpleVoipWrap: public workt::IObject
+{
+    const simple_voip::ForwardObject *obj;
 };
 
 class Dialer;
@@ -92,7 +98,7 @@ bool Dialer::init(
     return true;
 }
 
-bool Dialer::register_callback( voip_service::IVoipServiceCallback * callback )
+bool Dialer::register_callback( simple_voip::ISimpleVoipCallback * callback )
 {
     if( callback == 0L )
         return false;
@@ -131,10 +137,14 @@ Dialer::state_e Dialer::get_state() const
     return state_;
 }
 
-// interface IVoipService
-void Dialer::consume( const voip_service::Object * req )
+// interface ISimpleVoip
+void Dialer::consume( const simple_voip::ForwardObject * req )
 {
-    WorkerBase::consume( req );
+    auto w = new SimpleVoipWrap;
+
+    w->obj  = req;
+
+    WorkerBase::consume( w );
 }
 
 // interface skype_service::ISkypeCallback
@@ -159,21 +169,9 @@ void Dialer::on_detect( dtmf::tone_e button )
 
 void Dialer::handle( const workt::IObject* req )
 {
-    if( typeid( *req ) == typeid( voip_service::InitiateCallRequest ) )
+    if( typeid( *req ) == typeid( SimpleVoipWrap ) )
     {
-        handle( dynamic_cast< const voip_service::InitiateCallRequest *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::PlayFileRequest ) )
-    {
-        handle( dynamic_cast< const voip_service::PlayFileRequest *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::RecordFileRequest ) )
-    {
-        handle( dynamic_cast< const voip_service::RecordFileRequest *>( req ) );
-    }
-    else if( typeid( *req ) == typeid( voip_service::DropRequest ) )
-    {
-        handle( dynamic_cast< const voip_service::DropRequest *>( req ) );
+        handle( dynamic_cast< const SimpleVoipWrap *>( req ) );
     }
     else if( typeid( *req ) == typeid( ObjectWrap ) )
     {
@@ -185,7 +183,7 @@ void Dialer::handle( const workt::IObject* req )
     }
     else
     {
-        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %s", typeid( *req ).name() );
 
         ASSERT( 0 );
     }
@@ -194,9 +192,9 @@ void Dialer::handle( const workt::IObject* req )
 }
 
 
-void Dialer::handle( const voip_service::InitiateCallRequest * req )
+void Dialer::handle( const simple_voip::InitiateCallRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::InitiateCallRequest: %s", voip_service::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle simple_voip::InitiateCallRequest: %s", simple_voip::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -215,7 +213,7 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
     {
         dummy_log_error( MODULENAME, "invalid number format: %s", req->party.c_str() );
 
-        callback_consume( voip_service::create_error_response( req->job_id, 0, "invalid number format: " + req->party ) );
+        callback_consume( simple_voip::create_error_response( req->job_id, 0, "invalid number format: " + req->party ) );
 
         return;
     }
@@ -228,7 +226,7 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
     {
         dummy_log_error( MODULENAME, "failed calling: %s", req->party.c_str() );
 
-        callback_consume( voip_service::create_error_response( req->job_id, 0, "voip io failed" ) );
+        callback_consume( simple_voip::create_error_response( req->job_id, 0, "voip io failed" ) );
 
         return;
     }
@@ -241,9 +239,9 @@ void Dialer::handle( const voip_service::InitiateCallRequest * req )
     dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 }
 
-void Dialer::handle( const voip_service::DropRequest * req )
+void Dialer::handle( const simple_voip::DropRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::DropRequest: %s", voip_service::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle simple_voip::DropRequest: %s", simple_voip::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -262,23 +260,23 @@ void Dialer::handle( const voip_service::DropRequest * req )
 
     if( b == false )
     {
-        callback_consume( voip_service::create_error_response( req->job_id, 0, "voip io failed" ) );
+        callback_consume( simple_voip::create_error_response( req->job_id, 0, "voip io failed" ) );
         return;
     }
 
     current_job_id_    = req->job_id;
 
     if( state_ == WAITING_CONNECTION )
-        state_      = WAITING_DROP_RESPONSE_2;
+        state_      = CANCELED_IN_WC;
     else /* if( state_ == CONNECTED ) */
-        state_      = WAITING_DROP_RESPONSE;
+        state_      = CANCELED_IN_C;
 
     dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 }
 
-void Dialer::handle( const voip_service::PlayFileRequest * req )
+void Dialer::handle( const simple_voip::PlayFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::PlayFileRequest: %s", voip_service::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle simple_voip::PlayFileRequest: %s", simple_voip::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -296,9 +294,9 @@ void Dialer::handle( const voip_service::PlayFileRequest * req )
     player_.play_file( req->job_id, req->call_id, req->filename );
 }
 
-void Dialer::handle( const voip_service::RecordFileRequest * req )
+void Dialer::handle( const simple_voip::RecordFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle voip_service::RecordFileRequest: %s", voip_service::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle simple_voip::RecordFileRequest: %s", simple_voip::to_string( *req ).c_str() );
 
     // private: no mutex lock
 
@@ -319,12 +317,42 @@ void Dialer::handle( const voip_service::RecordFileRequest * req )
     {
         dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
 
-        callback_consume( voip_service::create_error_response( req->job_id, 0, "failed output input file: " + req->filename ) );
+        callback_consume( simple_voip::create_error_response( req->job_id, 0, "failed output input file: " + req->filename ) );
 
         return;
     }
 
-    callback_consume( voip_service::create_record_file_response( req->job_id ) );
+    callback_consume( simple_voip::create_record_file_response( req->job_id ) );
+}
+
+void Dialer::handle( const SimpleVoipWrap * w )
+{
+    auto * req = w->obj;
+
+    if( typeid( *req ) == typeid( simple_voip::InitiateCallRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::InitiateCallRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::PlayFileRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::PlayFileRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::RecordFileRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::RecordFileRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::DropRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::DropRequest *>( req ) );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %s", typeid( *req ).name() );
+
+        ASSERT( 0 );
+    }
+
+    delete req;
 }
 
 void Dialer::handle( const ObjectWrap * req )
@@ -349,8 +377,8 @@ void Dialer::handle( const ObjectWrap * req )
     case CONNECTED:
         handle_in_state_connected( ev );
         break;
-    case WAITING_DROP_RESPONSE:
-    case WAITING_DROP_RESPONSE_2:
+    case CANCELED_IN_C:
+    case CANCELED_IN_WC:
         handle_in_state_w_drpr( ev );
         break;
     default:
@@ -506,7 +534,7 @@ void Dialer::handle_in_state_w_ical( const skype_service::Event * ev )
 
         dummy_log_error( MODULENAME, "job_id %u, error %u '%s'", current_job_id_, errorcode, descr.c_str() );
 
-        callback_consume( voip_service::create_error_response( current_job_id_, errorcode, descr ) );
+        callback_consume( simple_voip::create_error_response( current_job_id_, errorcode, descr ) );
 
         current_job_id_ = 0;
         state_          = IDLE;
@@ -577,7 +605,7 @@ void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
 
         dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
 
-        callback_consume( voip_service::create_failed( call_id_, voip_service::Failed::FAILED, errorcode, "ERROR: " + descr ) );
+        callback_consume( simple_voip::create_failed( call_id_, simple_voip::Failed::FAILED, errorcode, "ERROR: " + descr ) );
 
         switch_to_idle_and_cleanup();
     }
@@ -649,7 +677,7 @@ void Dialer::handle_in_state_connected( const skype_service::Event * ev )
 
             dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
 
-            callback_consume( voip_service::create_connection_lost( call_id_, voip_service::ConnectionLost::FAILED, errorcode, descr ) );
+            callback_consume( simple_voip::create_connection_lost( call_id_, descr ) );
 
             switch_to_idle_and_cleanup();
         }
@@ -736,7 +764,7 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
     }
     else if( typeid( *ev ) == typeid( skype_service::CallStatusEvent ) )
     {
-        if( state_ == WAITING_DROP_RESPONSE )
+        if( state_ == CANCELED_IN_C )
             handle_in_w_drpr( dynamic_cast<const skype_service::CallStatusEvent*>( ev ) );
         else
             handle_in_w_drpr_2( dynamic_cast<const skype_service::CallStatusEvent*>( ev ) );
@@ -750,7 +778,7 @@ void Dialer::handle_in_state_w_drpr( const skype_service::Event * ev )
 
         dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
 
-        callback_consume( voip_service::create_connection_lost( call_id_, voip_service::ConnectionLost::FAILED, errorcode, "ERROR: " + descr ) );
+        callback_consume( simple_voip::create_connection_lost( call_id_, "ERROR: " + std::to_string( errorcode ) + ", " + descr ) );
 
         switch_to_idle_and_cleanup();
     }
@@ -924,7 +952,7 @@ void Dialer::handle( const skype_service::ErrorEvent * e )
 {
     dummy_log_error( MODULENAME, "unhandled error %u '%s'", e->error_code, e->descr.c_str() );
 
-    callback_consume( voip_service::create_error_response( 0, e->error_code, e->descr ) );
+    callback_consume( simple_voip::create_error_response( 0, e->error_code, e->descr ) );
 }
 
 void Dialer::handle_in_w_ical( const skype_service::CallStatusEvent * e )
@@ -941,7 +969,7 @@ void Dialer::handle_in_w_ical( const skype_service::CallStatusEvent * e )
 
     dummy_log_debug( MODULENAME, "job_id %u, call initiated: %u, status %s", current_job_id_, call_id, skype_service::to_string( s ).c_str() );
 
-    callback_consume( voip_service::create_initiate_call_response( current_job_id_, call_id, static_cast<uint32_t>( s ) ) );
+    callback_consume( simple_voip::create_initiate_call_response( current_job_id_, call_id ) );
 
     current_job_id_ = 0;
     call_id_        = call_id;
@@ -960,35 +988,35 @@ void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
     switch( s )
     {
     case skype_service::call_status_e::CANCELLED:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "cancelled by user" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::FAILED, "cancelled by user" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
-            callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, pstn_status_, "PSTN: " + pstn_status_msg_ ) );
+            callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::FAILED, "PSTN: " + std::to_string( pstn_status_ ) + ", " + pstn_status_msg_ ) );
         else
-            callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "cancelled by user" ) );
+            callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::FAILED, "cancelled by user" ) );
 
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::ROUTING:
-        callback_consume( voip_service::create_message_t<voip_service::Dial>( call_id ) );
+        callback_consume( simple_voip::create_message_t<simple_voip::Dialing>( call_id ) );
         break;
 
     case skype_service::call_status_e::RINGING:
-        callback_consume( voip_service::create_message_t<voip_service::Ring>( call_id ) );
+        callback_consume( simple_voip::create_message_t<simple_voip::Ringing>( call_id ) );
         break;
 
     case skype_service::call_status_e::VM_RECORDING:
-        callback_consume( voip_service::create_message_t<voip_service::Connected>( call_id ) );
+        callback_consume( simple_voip::create_message_t<simple_voip::Connected>( call_id ) );
         state_          = CONNECTED;
         dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
         break;
 
     case skype_service::call_status_e::INPROGRESS:
-        callback_consume( voip_service::create_message_t<voip_service::Connected>( call_id ) );
+        callback_consume( simple_voip::create_message_t<simple_voip::Connected>( call_id ) );
         state_          = CONNECTED;
 
         dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
@@ -1008,28 +1036,28 @@ void Dialer::handle_in_w_conn( const skype_service::CallStatusEvent * e )
         break;
 
     case skype_service::call_status_e::NONE:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "call ended unexpectedly" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::FAILED, "call ended unexpectedly" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FAILED:
     case skype_service::call_status_e::VM_FAILED:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::FAILED, 0, "call failed" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::FAILED, "call failed" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::MISSED:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::REFUSED, 0, "call was missed" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::REFUSED, "call was missed" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::BUSY:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::BUSY, 0, "number is busy" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::BUSY, "number is busy" ) );
         switch_to_idle_and_cleanup();
 
         break;
     case skype_service::call_status_e::REFUSED:
-        callback_consume( voip_service::create_failed( call_id, voip_service::Failed::REFUSED, 0, "call was refused" ) );
+        callback_consume( simple_voip::create_failed( call_id, simple_voip::Failed::REFUSED, "call was refused" ) );
         switch_to_idle_and_cleanup();
         break;
 
@@ -1049,15 +1077,15 @@ void Dialer::handle_in_connected( const skype_service::CallStatusEvent * e )
     switch( s )
     {
     case skype_service::call_status_e::CANCELLED:
-        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FINISHED, 0, "cancelled by user" ) );
+        callback_consume( simple_voip::create_connection_lost( call_id, "cancelled by user" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
-            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, pstn_status_, "PSTN: " + pstn_status_msg_ ) );
+            callback_consume( simple_voip::create_connection_lost( call_id, "PSTN: " + std::to_string( pstn_status_ ) + ", " + pstn_status_msg_ ) );
         else
-            callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, 0, "cancelled by user" ) );
+            callback_consume( simple_voip::create_connection_lost( call_id, "cancelled by user" ) );
 
         switch_to_idle_and_cleanup();
         break;
@@ -1076,12 +1104,12 @@ void Dialer::handle_in_connected( const skype_service::CallStatusEvent * e )
         break;
 
     case skype_service::call_status_e::NONE:
-        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FINISHED, 0, "call ended unexpectedly" ) );
+        callback_consume( simple_voip::create_connection_lost( call_id, "call ended unexpectedly" ) );
         switch_to_idle_and_cleanup();
         break;
 
     case skype_service::call_status_e::FAILED:
-        callback_consume( voip_service::create_connection_lost( call_id, voip_service::ConnectionLost::FAILED, 0, "call failed" ) );
+        callback_consume( simple_voip::create_connection_lost( call_id, "call failed" ) );
         switch_to_idle_and_cleanup();
         break;
 
@@ -1109,7 +1137,7 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
 
     case skype_service::call_status_e::FINISHED:
     {
-        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+        callback_consume( simple_voip::create_drop_response( current_job_id_ ) );
 
         switch_to_idle_and_cleanup();
     }
@@ -1117,7 +1145,7 @@ void Dialer::handle_in_w_drpr( const skype_service::CallStatusEvent * e )
 
 
     case skype_service::call_status_e::VM_SENT:
-        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+        callback_consume( simple_voip::create_drop_response( current_job_id_ ) );
 
         switch_to_idle_and_cleanup();
         break;
@@ -1171,7 +1199,7 @@ void Dialer::handle_in_w_drpr_2( const skype_service::CallStatusEvent * e )
         }
         */
 
-        callback_consume( voip_service::create_drop_response( current_job_id_ ) );
+        callback_consume( simple_voip::create_drop_response( current_job_id_ ) );
 
         switch_to_idle_and_cleanup();
 
@@ -1230,15 +1258,11 @@ void Dialer::handle( const skype_service::CallPstnStatusEvent * ev )
 void Dialer::handle( const skype_service::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->call_id, e->duration );
-
-    callback_consume( voip_service::create_call_duration( e->call_id, e->duration ) );
 }
 
 void Dialer::handle( const skype_service::VoicemailDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u voicemail dur %u", e->call_id, e->duration );
-
-    callback_consume( voip_service::create_call_duration( e->call_id, e->duration ) );
 }
 
 void Dialer::handle( const skype_service::CallFailureReasonEvent * e )
@@ -1262,7 +1286,7 @@ void Dialer::handle( const DetectedTone * e )
     {
         auto tone = decode_tone( e->tone );
 
-        auto ev = voip_service::create_dtmf_tone( call_id_, tone );
+        auto ev = simple_voip::create_dtmf_tone( call_id_, tone );
 
         callback_consume( ev );
     }
@@ -1302,26 +1326,26 @@ const char* Dialer::decode_failure_reason( const uint32_t c )
     return table[ c ];
 }
 
-voip_service::DtmfTone::tone_e Dialer::decode_tone( dtmf::tone_e tone )
+simple_voip::DtmfTone::tone_e Dialer::decode_tone( dtmf::tone_e tone )
 {
-    static const voip_service::DtmfTone::tone_e table[] =
+    static const simple_voip::DtmfTone::tone_e table[] =
     {
-        voip_service::DtmfTone::tone_e::TONE_0,
-        voip_service::DtmfTone::tone_e::TONE_1,
-        voip_service::DtmfTone::tone_e::TONE_2,
-        voip_service::DtmfTone::tone_e::TONE_3,
-        voip_service::DtmfTone::tone_e::TONE_4,
-        voip_service::DtmfTone::tone_e::TONE_5,
-        voip_service::DtmfTone::tone_e::TONE_6,
-        voip_service::DtmfTone::tone_e::TONE_7,
-        voip_service::DtmfTone::tone_e::TONE_8,
-        voip_service::DtmfTone::tone_e::TONE_9,
-        voip_service::DtmfTone::tone_e::TONE_A,
-        voip_service::DtmfTone::tone_e::TONE_B,
-        voip_service::DtmfTone::tone_e::TONE_C,
-        voip_service::DtmfTone::tone_e::TONE_D,
-        voip_service::DtmfTone::tone_e::TONE_STAR,
-        voip_service::DtmfTone::tone_e::TONE_HASH
+        simple_voip::DtmfTone::tone_e::TONE_0,
+        simple_voip::DtmfTone::tone_e::TONE_1,
+        simple_voip::DtmfTone::tone_e::TONE_2,
+        simple_voip::DtmfTone::tone_e::TONE_3,
+        simple_voip::DtmfTone::tone_e::TONE_4,
+        simple_voip::DtmfTone::tone_e::TONE_5,
+        simple_voip::DtmfTone::tone_e::TONE_6,
+        simple_voip::DtmfTone::tone_e::TONE_7,
+        simple_voip::DtmfTone::tone_e::TONE_8,
+        simple_voip::DtmfTone::tone_e::TONE_9,
+        simple_voip::DtmfTone::tone_e::TONE_A,
+        simple_voip::DtmfTone::tone_e::TONE_B,
+        simple_voip::DtmfTone::tone_e::TONE_C,
+        simple_voip::DtmfTone::tone_e::TONE_D,
+        simple_voip::DtmfTone::tone_e::TONE_STAR,
+        simple_voip::DtmfTone::tone_e::TONE_HASH
     };
 
     if( tone >= dtmf::tone_e::TONE_0 && tone <= dtmf::tone_e::TONE_HASH )
@@ -1329,7 +1353,7 @@ voip_service::DtmfTone::tone_e Dialer::decode_tone( dtmf::tone_e tone )
         return table[ static_cast<uint16_t>( tone ) ];
     }
 
-    return voip_service::DtmfTone::tone_e::TONE_A;
+    return simple_voip::DtmfTone::tone_e::TONE_A;
 }
 
 Dialer::party_e Dialer::get_party_type( const std::string & inp )
@@ -1368,15 +1392,15 @@ bool Dialer::is_call_id_valid( uint32_t call_id ) const
 
 void Dialer::send_reject_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
 {
-    callback_consume( voip_service::create_reject_response( job_id, errorcode, descr ) );
+    callback_consume( simple_voip::create_reject_response( job_id, errorcode, descr ) );
 }
 
 void Dialer::send_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
 {
-    callback_consume( voip_service::create_error_response( job_id, errorcode, descr ) );
+    callback_consume( simple_voip::create_error_response( job_id, errorcode, descr ) );
 }
 
-void Dialer::callback_consume( const voip_service::CallbackObject * req )
+void Dialer::callback_consume( const simple_voip::CallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );

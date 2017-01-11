@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 4809 $ $Date:: 2016-10-11 #$ $Author: serge $
+// $Revision: 5549 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -28,12 +28,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>                    // std::mutex
 #include <cstdint>                  // uint32_t
 
-#include "../voip_io/i_voip_service.h"          // IVoipService
-#include "../voip_io/i_voip_service_callback.h" // IVoipServiceCallback
-#include "../voip_io/objects.h"                 // InitiateCallResponse
+#include "../simple_voip/i_simple_voip.h"       // ISimpleVoip
+#include "../simple_voip/i_simple_voip_callback.h" // ISimpleVoipCallback
+#include "../simple_voip/objects.h"             // InitiateCallResponse
 #include "../skype_service/i_callback.h"        // ICallback
 #include "../skype_service/events.h"            // ConnStatusEvent, ...
 #include "../workt/worker_t.h"                  // WorkerT
+#include "../workt/i_object.h"                  // workt::IObject
 #include "../threcon/i_controllable.h"          // IControllable
 #include "../dtmf_detector/IDtmfDetectorCallback.hpp"   // IDtmfDetectorCallback
 #include "player_sm.h"                          // PlayerSM
@@ -51,12 +52,13 @@ NAMESPACE_DIALER_START
 class Dialer;
 class DetectedTone;
 class ObjectWrap;
+class SimpleVoipWrap;
 
 typedef workt::WorkerT< const workt::IObject*, Dialer> WorkerBase;
 
 class Dialer:
         public WorkerBase,
-        virtual public voip_service::IVoipService,
+        virtual public simple_voip::ISimpleVoip,
         virtual public skype_service::ICallback,
         virtual public threcon::IControllable,
         virtual public dtmf::IDtmfDetectorCallback
@@ -71,8 +73,8 @@ public:
         WAITING_INITIATE_CALL_RESPONSE,
         WAITING_CONNECTION,
         CONNECTED,
-        WAITING_DROP_RESPONSE,
-        WAITING_DROP_RESPONSE_2,    // waiting drop response before connection
+        CANCELED_IN_C,
+        CANCELED_IN_WC,    // waiting drop response before connection
     };
 
 public:
@@ -84,14 +86,14 @@ public:
             sched::IScheduler           * sched,
             uint16_t                    data_port = 0 );
 
-    bool register_callback( voip_service::IVoipServiceCallback * callback );
+    bool register_callback( simple_voip::ISimpleVoipCallback * callback );
 
     bool is_inited() const;
 
     state_e get_state() const;
 
-    // interface IVoipService
-    virtual void consume( const voip_service::Object * req );
+    // interface ISimpleVoip
+    virtual void consume( const simple_voip::ForwardObject * req );
 
     // interface skype_service::ICallback
     virtual void consume( const skype_service::Event * e );
@@ -107,11 +109,12 @@ public:
 private:
     void handle( const workt::IObject* req );
 
-    // for interface IVoipService
-    void handle( const voip_service::InitiateCallRequest * req );
-    void handle( const voip_service::DropRequest * req );
-    void handle( const voip_service::PlayFileRequest * req );
-    void handle( const voip_service::RecordFileRequest * req );
+    // for interface ISimpleVoip
+    void handle( const simple_voip::InitiateCallRequest * req );
+    void handle( const simple_voip::DropRequest * req );
+    void handle( const simple_voip::PlayFileRequest * req );
+    void handle( const simple_voip::RecordFileRequest * req );
+    void handle( const SimpleVoipWrap * req );
     void handle( const ObjectWrap * req );
 
     // interface skype_service::ICallback
@@ -148,7 +151,7 @@ private:
     bool is_inited__() const;
     bool is_call_id_valid( uint32_t call_id ) const;
 
-    void callback_consume( const voip_service::CallbackObject * req );
+    void callback_consume( const simple_voip::CallbackObject * req );
 
     void send_reject_due_to_wrong_state( uint32_t job_id );
     bool send_reject_if_in_request_processing( uint32_t job_id );
@@ -159,7 +162,7 @@ private:
     void switch_to_ready_if_possible();
     void switch_to_idle_and_cleanup();
 
-    static voip_service::DtmfTone::tone_e decode_tone( dtmf::tone_e tone );
+    static simple_voip::DtmfTone::tone_e decode_tone( dtmf::tone_e tone );
 
     enum class party_e
     {
@@ -177,7 +180,7 @@ private:
 
     skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;
-    voip_service::IVoipServiceCallback  * callback_;
+    simple_voip::ISimpleVoipCallback  * callback_;
     uint16_t                    data_port_;
 
     uint32_t                    current_job_id_;

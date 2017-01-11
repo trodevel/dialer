@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3198 $ $Date:: 2016-01-18 #$ $Author: serge $
+// $Revision: 5533 $ $Date:: 2017-01-10 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -41,9 +41,9 @@ namespace skype_service
 class SkypeService;
 }
 
-namespace voip_service
+namespace simple_voip
 {
-class IVoipServiceCallback;
+class ISimpleVoipCallback;
 }
 
 NAMESPACE_DIALER_START
@@ -66,7 +66,7 @@ public:
 
     bool init( skype_service::SkypeService * sw, sched::IScheduler * sched );
 
-    bool register_callback( voip_service::IVoipServiceCallback  * callback );
+    bool register_callback( simple_voip::ISimpleVoipCallback  * callback );
 
     bool is_inited() const;
 
@@ -74,7 +74,7 @@ public:
     void play_file( uint32_t job_id, uint32_t call_id, const std::string & filename );
     void stop();
 
-    // IVoipServiceCallback
+    // ISimpleVoipCallback
     void on_play_file_response( uint32_t job_id );
     void on_error_response( uint32_t job_id );
     void on_play_start( uint32_t call_id );
@@ -93,7 +93,7 @@ private:
 
     skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;
-    voip_service::IVoipServiceCallback  * callback_;
+    simple_voip::ISimpleVoipCallback  * callback_;
 
     //std::shared_ptr<sched::IOneTimeJob>     job_;
     sched::IOneTimeJob             * job_;
