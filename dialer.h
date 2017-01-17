@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5549 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5556 $ $Date:: 2017-01-16 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -113,6 +113,7 @@ private:
     void handle( const simple_voip::InitiateCallRequest * req );
     void handle( const simple_voip::DropRequest * req );
     void handle( const simple_voip::PlayFileRequest * req );
+    void handle( const simple_voip::PlayFileStopRequest * req );
     void handle( const simple_voip::RecordFileRequest * req );
     void handle( const SimpleVoipWrap * req );
     void handle( const ObjectWrap * req );

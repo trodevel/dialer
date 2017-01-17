@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5538 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5559 $ $Date:: 2017-01-16 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -194,7 +194,7 @@ void Dialer::handle( const workt::IObject* req )
 
 void Dialer::handle( const simple_voip::InitiateCallRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle simple_voip::InitiateCallRequest: %s", simple_voip::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: ", typeid( *req ).name(), req->job_id, req->party.c_str() );
 
     // private: no mutex lock
 
@@ -241,7 +241,7 @@ void Dialer::handle( const simple_voip::InitiateCallRequest * req )
 
 void Dialer::handle( const simple_voip::DropRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle simple_voip::DropRequest: %s", simple_voip::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->job_id, req->call_id );
 
     // private: no mutex lock
 
@@ -276,7 +276,7 @@ void Dialer::handle( const simple_voip::DropRequest * req )
 
 void Dialer::handle( const simple_voip::PlayFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle simple_voip::PlayFileRequest: %s", simple_voip::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->job_id, req->call_id, req->filename.c_str() );
 
     // private: no mutex lock
 
@@ -294,9 +294,29 @@ void Dialer::handle( const simple_voip::PlayFileRequest * req )
     player_.play_file( req->job_id, req->call_id, req->filename );
 }
 
+void Dialer::handle( const simple_voip::PlayFileStopRequest * req )
+{
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->job_id, req->call_id );
+
+    // private: no mutex lock
+
+    if( send_reject_if_in_request_processing( req->job_id ) )
+        return;
+
+    if( state_ != CONNECTED )
+    {
+        send_reject_due_to_wrong_state( req->job_id );
+        return;
+    }
+
+    ASSERT( is_call_id_valid( req->call_id ) );
+
+    player_.stop( req->job_id, req->call_id );
+}
+
 void Dialer::handle( const simple_voip::RecordFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle simple_voip::RecordFileRequest: %s", simple_voip::to_string( *req ).c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->job_id, req->call_id, req->filename.c_str() );
 
     // private: no mutex lock
 
@@ -336,6 +356,10 @@ void Dialer::handle( const SimpleVoipWrap * w )
     else if( typeid( *req ) == typeid( simple_voip::PlayFileRequest ) )
     {
         handle( dynamic_cast< const simple_voip::PlayFileRequest *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( simple_voip::PlayFileStopRequest ) )
+    {
+        handle( dynamic_cast< const simple_voip::PlayFileStopRequest *>( req ) );
     }
     else if( typeid( *req ) == typeid( simple_voip::RecordFileRequest ) )
     {
@@ -605,7 +629,7 @@ void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
 
         dummy_log_error( MODULENAME, "error %u '%s'", errorcode, descr.c_str() );
 
-        callback_consume( simple_voip::create_failed( call_id_, simple_voip::Failed::FAILED, errorcode, "ERROR: " + descr ) );
+        callback_consume( simple_voip::create_failed( call_id_, simple_voip::Failed::FAILED, "ERROR: " + descr ) );
 
         switch_to_idle_and_cleanup();
     }
@@ -935,7 +959,7 @@ void Dialer::switch_to_idle_and_cleanup()
     failure_reason_ = 0;
     failure_reason_msg_.clear();
 
-    player_.stop();
+    player_.on_loss();
 
     dummy_log_info( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
 }

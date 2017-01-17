@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5546 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5560 $ $Date:: 2017-01-16 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -46,7 +46,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_DIALER_START
 
 PlayerSM::PlayerSM():
-    state_( UNKNOWN ), job_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
+    state_( IDLE ), job_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
 {
 }
 
@@ -129,13 +129,13 @@ void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string &
     job_id_ = job_id;
 }
 
-void PlayerSM::stop()
+void PlayerSM::stop( uint32_t job_id, uint32_t call_id )
 {
-    dummy_log_debug( MODULENAME, "stop" );
+    dummy_log_debug( MODULENAME, "stop: job_id %u", job_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ == IDLE || state_ == UNKNOWN )
+    if( state_ == IDLE )
     {
         dummy_log_warn( MODULENAME, "stop: ineffective in state %s", StrHelper::to_string( state_ ).c_str() );
         return;
@@ -148,9 +148,53 @@ void PlayerSM::stop()
             job_->cancel();
             job_    = nullptr;
         }
+
+        state_      = IDLE;
+        job_id_     = 0;
+    }
+    else if( state_ == PLAYING )
+    {
+        auto b = sio_->alter_call_set_input_soundcard( call_id, job_id );
+
+        if( b == false )
+        {
+            dummy_log_error( MODULENAME, "failed input soundcard" );
+
+            callback_->consume( simple_voip::create_error_response( job_id, 0, "failed setting input soundcard" ) );
+
+            return;
+        }
+
+        state_  = CANCELED_IN_P;
     }
 
     dummy_log_debug( MODULENAME, "stop: ok" );
+
+    ASSERT( is_inited() );
+}
+
+void PlayerSM::on_loss()
+{
+    dummy_log_debug( MODULENAME, "on_loss" );
+
+    MUTEX_SCOPE_LOCK( mutex_ );
+
+    if( state_ == IDLE )
+    {
+        dummy_log_warn( MODULENAME, "on_loss: ineffective in state %s", StrHelper::to_string( state_ ).c_str() );
+        return;
+    }
+
+    if( state_ == WAIT_PLAY_START )
+    {
+        if( job_ )
+        {
+            job_->cancel();
+            job_    = nullptr;
+        }
+    }
+
+    dummy_log_debug( MODULENAME, "on_loss: ok" );
 
     ASSERT( is_inited() );
 
@@ -228,7 +272,7 @@ void PlayerSM::on_play_stop( uint32_t call_id )
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != PLAYING )
+    if( state_ != PLAYING && state_ != CANCELED_IN_P )
     {
         dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );

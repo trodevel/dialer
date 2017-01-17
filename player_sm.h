@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5533 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5560 $ $Date:: 2017-01-16 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -53,11 +53,12 @@ class PlayerSM
 public:
     enum state_e
     {
-        UNKNOWN = 0,
-        IDLE,
+        IDLE    = 0,
         WAIT_PLAY_RESP,
         WAIT_PLAY_START,
+        CANCELED_IN_WPS,
         PLAYING,
+        CANCELED_IN_P
     };
 
 public:
@@ -72,7 +73,8 @@ public:
 
     // IPlayerSM
     void play_file( uint32_t job_id, uint32_t call_id, const std::string & filename );
-    void stop();
+    void stop( uint32_t job_id, uint32_t call_id );
+    void on_loss();
 
     // ISimpleVoipCallback
     void on_play_file_response( uint32_t job_id );

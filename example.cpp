@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5550 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5556 $ $Date:: 2017-01-16 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -215,6 +215,11 @@ private:
 
                 last_job_id_++;
                 dialer_->consume( simple_voip::create_play_file_request( last_job_id_, call_id_, filename ) );
+            }
+            else if( cmd == "stop" )
+            {
+                last_job_id_++;
+                dialer_->consume( simple_voip::create_play_file_stop_request( last_job_id_, call_id_ ) );
             }
             else if( cmd == "rec" )
             {
