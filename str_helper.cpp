@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5531 $ $Date:: 2017-01-10 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #include "str_helper.h"             // self
 
@@ -60,7 +60,6 @@ const std::string & StrHelper::to_string( const PlayerSM::state_e & l )
     static Map m;
     if( m.empty() )
     {
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( UNKNOWN ) );
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( IDLE ) );
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_RESP ) );
         MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_START ) );

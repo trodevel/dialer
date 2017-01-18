@@ -19,12 +19,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5559 $ $Date:: 2017-01-16 #$ $Author: serge $
+// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
 #include "../simple_voip/object_factory.h"      // simple_voip::create_message_t
-#include "../voip_io/str_helper.h"      // simple_voip::to_string
 #include "../skype_service/skype_service.h"     // skype_service::SkypeService
 #include "../skype_service/str_helper.h"        // skype_service::to_string
 #include "../utils/dummy_logger.h"      // dummy_log
