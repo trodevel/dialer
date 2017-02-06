@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 5690 $ $Date:: 2017-02-06 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -193,16 +193,16 @@ void Dialer::handle( const workt::IObject* req )
 
 void Dialer::handle( const simple_voip::InitiateCallRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle %s: ", typeid( *req ).name(), req->job_id, req->party.c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: ", typeid( *req ).name(), req->req_id, req->party.c_str() );
 
     // private: no mutex lock
 
-    if( send_reject_if_in_request_processing( req->job_id ) )
+    if( send_reject_if_in_request_processing( req->req_id ) )
         return;
 
     if( state_ != IDLE )
     {
-        send_reject_due_to_wrong_state( req->job_id );
+        send_reject_due_to_wrong_state( req->req_id );
         return;
     }
 
@@ -212,26 +212,26 @@ void Dialer::handle( const simple_voip::InitiateCallRequest * req )
     {
         dummy_log_error( MODULENAME, "invalid number format: %s", req->party.c_str() );
 
-        callback_consume( simple_voip::create_error_response( req->job_id, 0, "invalid number format: " + req->party ) );
+        callback_consume( simple_voip::create_error_response( req->req_id, 0, "invalid number format: " + req->party ) );
 
         return;
     }
 
     dummy_log_debug( MODULENAME, "transformed party: %s into %s", req->party.c_str(), party.c_str() );
 
-    bool b = sio_->call( party, req->job_id );
+    bool b = sio_->call( party, req->req_id );
 
     if( b == false )
     {
         dummy_log_error( MODULENAME, "failed calling: %s", req->party.c_str() );
 
-        callback_consume( simple_voip::create_error_response( req->job_id, 0, "voip io failed" ) );
+        callback_consume( simple_voip::create_error_response( req->req_id, 0, "voip io failed" ) );
 
         return;
     }
 
     ASSERT( current_job_id_ == 0 );
-    current_job_id_    = req->job_id;
+    current_job_id_    = req->req_id;
 
     state_  = WAITING_INITIATE_CALL_RESPONSE;
 
@@ -240,30 +240,30 @@ void Dialer::handle( const simple_voip::InitiateCallRequest * req )
 
 void Dialer::handle( const simple_voip::DropRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->job_id, req->call_id );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->req_id, req->call_id );
 
     // private: no mutex lock
 
-    if( send_reject_if_in_request_processing( req->job_id ) )
+    if( send_reject_if_in_request_processing( req->req_id ) )
         return;
 
     if( state_ != WAITING_CONNECTION && state_ != CONNECTED )
     {
-        send_reject_due_to_wrong_state( req->job_id );
+        send_reject_due_to_wrong_state( req->req_id );
         return;
     }
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    bool b = sio_->set_call_status( req->call_id, skype_service::call_status_e::FINISHED, req->job_id );
+    bool b = sio_->set_call_status( req->call_id, skype_service::call_status_e::FINISHED, req->req_id );
 
     if( b == false )
     {
-        callback_consume( simple_voip::create_error_response( req->job_id, 0, "voip io failed" ) );
+        callback_consume( simple_voip::create_error_response( req->req_id, 0, "voip io failed" ) );
         return;
     }
 
-    current_job_id_    = req->job_id;
+    current_job_id_    = req->req_id;
 
     if( state_ == WAITING_CONNECTION )
         state_      = CANCELED_IN_WC;
@@ -275,73 +275,73 @@ void Dialer::handle( const simple_voip::DropRequest * req )
 
 void Dialer::handle( const simple_voip::PlayFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->job_id, req->call_id, req->filename.c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->req_id, req->call_id, req->filename.c_str() );
 
     // private: no mutex lock
 
-    if( send_reject_if_in_request_processing( req->job_id ) )
+    if( send_reject_if_in_request_processing( req->req_id ) )
         return;
 
     if( state_ != CONNECTED )
     {
-        send_reject_due_to_wrong_state( req->job_id );
+        send_reject_due_to_wrong_state( req->req_id );
         return;
     }
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    player_.play_file( req->job_id, req->call_id, req->filename );
+    player_.play_file( req->req_id, req->call_id, req->filename );
 }
 
 void Dialer::handle( const simple_voip::PlayFileStopRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->job_id, req->call_id );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u", typeid( *req ).name(), req->req_id, req->call_id );
 
     // private: no mutex lock
 
-    if( send_reject_if_in_request_processing( req->job_id ) )
+    if( send_reject_if_in_request_processing( req->req_id ) )
         return;
 
     if( state_ != CONNECTED )
     {
-        send_reject_due_to_wrong_state( req->job_id );
+        send_reject_due_to_wrong_state( req->req_id );
         return;
     }
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    player_.stop( req->job_id, req->call_id );
+    player_.stop( req->req_id, req->call_id );
 }
 
 void Dialer::handle( const simple_voip::RecordFileRequest * req )
 {
-    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->job_id, req->call_id, req->filename.c_str() );
+    dummy_log_debug( MODULENAME, "handle %s: req id %u, call id %u, filename %s", typeid( *req ).name(), req->req_id, req->call_id, req->filename.c_str() );
 
     // private: no mutex lock
 
-    if( send_reject_if_in_request_processing( req->job_id ) )
+    if( send_reject_if_in_request_processing( req->req_id ) )
         return;
 
     if( state_ != CONNECTED )
     {
-        send_reject_due_to_wrong_state( req->job_id );
+        send_reject_due_to_wrong_state( req->req_id );
         return;
     }
 
     ASSERT( is_call_id_valid( req->call_id ) );
 
-    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename, req->job_id );
+    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename, req->req_id );
 
     if( b == false )
     {
         dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
 
-        callback_consume( simple_voip::create_error_response( req->job_id, 0, "failed output input file: " + req->filename ) );
+        callback_consume( simple_voip::create_error_response( req->req_id, 0, "failed output input file: " + req->filename ) );
 
         return;
     }
 
-    callback_consume( simple_voip::create_record_file_response( req->job_id ) );
+    callback_consume( simple_voip::create_record_file_response( req->req_id ) );
 }
 
 void Dialer::handle( const SimpleVoipWrap * w )

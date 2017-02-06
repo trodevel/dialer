@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 5690 $ $Date:: 2017-02-06 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -47,7 +47,7 @@ public:
         dialer_( dialer ),
         sched_( sched ),
         call_id_( 0 ),
-        last_job_id_( 0 )
+        last_req_id_( 0 )
     {
     }
 
@@ -59,7 +59,7 @@ public:
         if( typeid( *req ) == typeid( simple_voip::InitiateCallResponse ) )
         {
             std::cout << "got InitiateCallResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->req_id
                     << " call_id " << dynamic_cast< const simple_voip::InitiateCallResponse *>( req )->call_id
                     << std::endl;
 
@@ -68,21 +68,21 @@ public:
         else if( typeid( *req ) == typeid( simple_voip::ErrorResponse ) )
         {
             std::cout << "got ErrorResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->req_id
                     << " " << dynamic_cast< const simple_voip::ErrorResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::RejectResponse ) )
         {
             std::cout << "got RejectResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::RejectResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::RejectResponse *>( req )->req_id
                     << " " << dynamic_cast< const simple_voip::RejectResponse *>( req )->descr
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::DropResponse ) )
         {
             std::cout << "got DropResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::DropResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::DropResponse *>( req )->req_id
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::Failed ) )
@@ -136,13 +136,13 @@ public:
         else if( typeid( *req ) == typeid( simple_voip::PlayFileResponse ) )
         {
             std::cout << "got PlayFileResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->req_id
                     << std::endl;
         }
         else if( typeid( *req ) == typeid( simple_voip::RecordFileResponse ) )
         {
             std::cout << "got RecordFileResponse"
-                    << " job_id " << dynamic_cast< const simple_voip::RecordFileResponse *>( req )->job_id
+                    << " req_id " << dynamic_cast< const simple_voip::RecordFileResponse *>( req )->req_id
                     << std::endl;
         }
         else
@@ -199,35 +199,35 @@ private:
                 std::string s;
                 stream >> s;
 
-                last_job_id_++;
+                last_req_id_++;
 
-                dialer_->consume( simple_voip::create_initiate_call_request( last_job_id_, s ) );
+                dialer_->consume( simple_voip::create_initiate_call_request( last_req_id_, s ) );
             }
             else if( cmd == "drop" )
             {
-                last_job_id_++;
-                dialer_->consume( simple_voip::create_drop_request( last_job_id_, call_id_ ) );
+                last_req_id_++;
+                dialer_->consume( simple_voip::create_drop_request( last_req_id_, call_id_ ) );
             }
             else if( cmd == "play" )
             {
                 std::string filename;
                 stream >> filename;
 
-                last_job_id_++;
-                dialer_->consume( simple_voip::create_play_file_request( last_job_id_, call_id_, filename ) );
+                last_req_id_++;
+                dialer_->consume( simple_voip::create_play_file_request( last_req_id_, call_id_, filename ) );
             }
             else if( cmd == "stop" )
             {
-                last_job_id_++;
-                dialer_->consume( simple_voip::create_play_file_stop_request( last_job_id_, call_id_ ) );
+                last_req_id_++;
+                dialer_->consume( simple_voip::create_play_file_stop_request( last_req_id_, call_id_ ) );
             }
             else if( cmd == "rec" )
             {
                 std::string filename;
                 stream >> filename;
 
-                last_job_id_++;
-                dialer_->consume( simple_voip::create_record_file_request( last_job_id_, call_id_, filename ) );
+                last_req_id_++;
+                dialer_->consume( simple_voip::create_record_file_request( last_req_id_, call_id_, filename ) );
             }
             else
                 std::cout << "ERROR: unknown command '" << cmd << "'" << std::endl;
@@ -245,7 +245,7 @@ private:
 
     std::atomic<int>            call_id_;
 
-    uint32_t                    last_job_id_;
+    uint32_t                    last_req_id_;
 
 };
 
