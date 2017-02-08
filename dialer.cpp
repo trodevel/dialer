@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5690 $ $Date:: 2017-02-06 #$ $Author: serge $
+// $Revision: 5725 $ $Date:: 2017-02-08 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -635,6 +635,7 @@ void Dialer::handle_in_state_w_conn( const skype_service::Event * ev )
     //    else if( typeid( *ev ) == typeid( skype_service::UNDEF:
     else if(
             ( typeid( *ev ) == typeid( skype_service::CurrentUserHandleEvent ) ) ||
+            ( typeid( *ev ) == typeid( skype_service::UserEvent ) ) ||
             ( typeid( *ev ) == typeid( skype_service::UserOnlineStatusEvent ) ) ||
             ( typeid( *ev ) == typeid( skype_service::ChatEvent) ) ||
             ( typeid( *ev ) == typeid( skype_service::ChatMemberEvent ) ) )
