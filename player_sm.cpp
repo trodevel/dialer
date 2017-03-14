@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 6012 $ $Date:: 2017-03-14 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -46,7 +46,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_DIALER_START
 
 PlayerSM::PlayerSM():
-    state_( IDLE ), job_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
+    state_( IDLE ), req_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
 {
 }
 
@@ -69,7 +69,7 @@ bool PlayerSM::init( skype_service::SkypeService * sw, sched::IScheduler * sched
     dummy_log_info( MODULENAME, "init: switching to IDLE" );
 
     state_  = IDLE;
-    job_id_ = 0;
+    req_id_ = 0;
 
     return true;
 }
@@ -99,9 +99,9 @@ bool PlayerSM::is_inited() const
 }
 
 
-void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
+void PlayerSM::play_file( uint32_t req_id, uint32_t call_id, const std::string & filename )
 {
-    dummy_log_debug( MODULENAME, "play_file: job_id %u", job_id );
+    dummy_log_debug( MODULENAME, "play_file: req_id %u", req_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -114,34 +114,39 @@ void PlayerSM::play_file( uint32_t job_id, uint32_t call_id, const std::string &
 
     ASSERT( is_inited() );
 
-    bool b = sio_->alter_call_set_input_file( call_id, filename, job_id );
+    bool b = sio_->alter_call_set_input_file( call_id, filename, req_id );
 
     if( b == false )
     {
         dummy_log_error( MODULENAME, "failed setting input file: %s", filename.c_str() );
 
-        callback_->consume( simple_voip::create_error_response( job_id, 0, "failed setting input file: " + filename ) );
+        callback_->consume( simple_voip::create_error_response( req_id, 0, "failed setting input file: " + filename ) );
 
         return;
     }
 
-    state_  = WAIT_PLAY_RESP;
-    job_id_ = job_id;
+    ASSERT( req_id_ == 0 );
+
+    req_id_ = req_id;
+
+    next_state( WAIT_PLAY_RESP );
 }
 
-void PlayerSM::stop( uint32_t job_id, uint32_t call_id )
+void PlayerSM::stop( uint32_t req_id, uint32_t call_id )
 {
-    dummy_log_debug( MODULENAME, "stop: job_id %u", job_id );
+    dummy_log_debug( MODULENAME, "stop: req_id %u", req_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ == IDLE )
+    switch( state_ )
+    {
+    case IDLE:
     {
         dummy_log_warn( MODULENAME, "stop: ineffective in state %s", StrHelper::to_string( state_ ).c_str() );
-        return;
+        break;
     }
 
-    if( state_ == WAIT_PLAY_START )
+    case WAIT_PLAY_START:
     {
         if( job_ )
         {
@@ -149,26 +154,52 @@ void PlayerSM::stop( uint32_t job_id, uint32_t call_id )
             job_    = nullptr;
         }
 
-        state_      = IDLE;
-        job_id_     = 0;
+        dummy_log_debug( MODULENAME, "stop: ok" );
+
+        callback_->consume( simple_voip::create_play_file_stop_response( req_id ) );
+
+        req_id_     = 0;
+        next_state( IDLE );
     }
-    else if( state_ == PLAYING )
+        break;
+
+    case PLAYING_ALREADY_STOPPED:
     {
-        auto b = sio_->alter_call_set_input_soundcard( call_id, job_id );
+        dummy_log_debug( MODULENAME, "stop: ok" );
+
+        callback_->consume( simple_voip::create_play_file_stop_response( req_id ) );
+
+        req_id_     = 0;
+        next_state( IDLE );
+    }
+        break;
+
+    case PLAYING:
+    {
+        auto b = sio_->alter_call_set_input_soundcard( call_id, req_id );
 
         if( b == false )
         {
             dummy_log_error( MODULENAME, "failed input soundcard" );
 
-            callback_->consume( simple_voip::create_error_response( job_id, 0, "failed setting input soundcard" ) );
+            callback_->consume( simple_voip::create_error_response( req_id, 0, "failed setting input soundcard" ) );
 
             return;
         }
 
-        state_  = CANCELED_IN_P;
-    }
+        ASSERT( req_id_ == 0 );
 
-    dummy_log_debug( MODULENAME, "stop: ok" );
+        req_id_ = req_id;
+
+        next_state( CANCELED_IN_P );
+    }
+    break;
+
+    default:
+        dummy_log_error( MODULENAME, "stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
+        ASSERT( 0 );
+        break;
+    }
 
     ASSERT( is_inited() );
 }
@@ -198,13 +229,13 @@ void PlayerSM::on_loss()
 
     ASSERT( is_inited() );
 
-    state_      = IDLE;
-    job_id_     = 0;
+    req_id_     = 0;
+    next_state( IDLE );
 }
 
-void PlayerSM::on_play_file_response( uint32_t job_id )
+void PlayerSM::on_play_file_response( uint32_t req_id )
 {
-    dummy_log_debug( MODULENAME, "on_play_file_response: job_id %u", job_id );
+    dummy_log_debug( MODULENAME, "on_play_file_response: req_id %u", req_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -222,16 +253,15 @@ void PlayerSM::on_play_file_response( uint32_t job_id )
         delete job_;
         job_    = nullptr;
     }
-    job_    = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, job_id ) );
+    job_    = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, req_id ) );
 
-    state_  = WAIT_PLAY_START;
-    job_id_ = job_id;
-
+    req_id_ = req_id;
+    next_state( WAIT_PLAY_START );
 }
 
-void PlayerSM::on_error_response( uint32_t job_id )
+void PlayerSM::on_error_response( uint32_t req_id )
 {
-    dummy_log_debug( MODULENAME, "on_error_response: %u", job_id );
+    dummy_log_debug( MODULENAME, "on_error_response: %u", req_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -258,12 +288,12 @@ void PlayerSM::on_play_start( uint32_t call_id )
 
     dummy_log_debug( MODULENAME, "on_play_start: ok" );
 
-    callback_->consume( simple_voip::create_play_file_response( job_id_ ) );
+    callback_->consume( simple_voip::create_play_file_response( req_id_ ) );
 
-    state_  = PLAYING;
     job_->cancel();     // cancel timeout job as replay was successfully started
     job_    = nullptr;
-    job_id_ = 0;
+    req_id_ = 0;
+    next_state( PLAYING );
 }
 
 void PlayerSM::on_play_stop( uint32_t call_id )
@@ -272,22 +302,38 @@ void PlayerSM::on_play_stop( uint32_t call_id )
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( state_ != PLAYING && state_ != CANCELED_IN_P )
+    switch( state_ )
     {
+    case PLAYING:
+    {
+        req_id_ = 0;
+        next_state( PLAYING_ALREADY_STOPPED );
+    }
+        break;
+
+    case CANCELED_IN_P:
+    {
+        ASSERT( req_id_ );
+
+        callback_->consume( simple_voip::create_play_file_stop_response( req_id_ ) );
+
+        dummy_log_debug( MODULENAME, "on_play_stop: ok" );
+
+        req_id_ = 0;
+        next_state( IDLE );
+    }
+        break;
+
+    default:
         dummy_log_fatal( MODULENAME, "on_play_stop: unexpected in state %s", StrHelper::to_string( state_ ).c_str() );
         ASSERT( false );
-        return;
+        break;
     }
-
-    dummy_log_debug( MODULENAME, "on_play_stop: ok" );
-
-    state_  = IDLE;
-    job_id_ = 0;
 }
 
-void PlayerSM::on_play_failed( uint32_t job_id )
+void PlayerSM::on_play_failed( uint32_t req_id )
 {
-    dummy_log_debug( MODULENAME, "on_play_failed: job_id %u", job_id );
+    dummy_log_debug( MODULENAME, "on_play_failed: req_id %u", req_id );
 
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -300,12 +346,23 @@ void PlayerSM::on_play_failed( uint32_t job_id )
 
     dummy_log_debug( MODULENAME, "on_play_failed: ok" );
 
-    callback_->consume( simple_voip::create_error_response( job_id_, 0, "play failed" ) );
+    callback_->consume( simple_voip::create_error_response( req_id_, 0, "play failed" ) );
 
-    state_  = IDLE;
     job_    = nullptr;       // job_ is not valid after call of invoke()
-    job_id_ = 0;
+    req_id_ = 0;
+    next_state( IDLE );
 }
 
+void PlayerSM::next_state( state_e state )
+{
+    state_  = state;
+
+    trace_state_switch();
+}
+
+void PlayerSM::trace_state_switch() const
+{
+    dummy_log_debug( MODULENAME, "switched to %s", StrHelper::to_string( state_ ).c_str() );
+}
 
 NAMESPACE_DIALER_END

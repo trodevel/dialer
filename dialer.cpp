@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5768 $ $Date:: 2017-02-13 #$ $Author: serge $
+// $Revision: 5792 $ $Date:: 2017-02-20 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -84,6 +84,8 @@ bool Dialer::init(
 
     if( !sw || !sched )
         return false;
+
+    WorkerBase::init( "dialer" );
 
     sio_        = sw;
     sched_      = sched;

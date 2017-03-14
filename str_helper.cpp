@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 6016 $ $Date:: 2017-03-14 #$ $Author: serge $
 
 #include "str_helper.h"             // self
 
@@ -57,21 +57,25 @@ const std::string & StrHelper::to_string( const Dialer::state_e & l )
 const std::string & StrHelper::to_string( const PlayerSM::state_e & l )
 {
     typedef std::map< PlayerSM::state_e, std::string > Map;
-    static Map m;
-    if( m.empty() )
+    static Map m =
     {
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( IDLE ) );
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_RESP ) );
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_START ) );
-        MAP_INSERT_VAL( m, PlayerSM:: TUPLE_VAL_STR( PLAYING ) );
-    }
+        { PlayerSM:: TUPLE_VAL_STR( IDLE ) },
+        { PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_RESP ) },
+        { PlayerSM:: TUPLE_VAL_STR( WAIT_PLAY_START ) },
+        { PlayerSM:: TUPLE_VAL_STR( PLAYING ) },
+        { PlayerSM:: TUPLE_VAL_STR( CANCELED_IN_WPS ) },
+        { PlayerSM:: TUPLE_VAL_STR( PLAYING_ALREADY_STOPPED ) },
+        { PlayerSM:: TUPLE_VAL_STR( CANCELED_IN_P ) },
+    };
 
-    static const std::string def( "UNKNOWN" );
+    auto it = m.find( l );
 
-    if( 0 == m.count( l ) )
-        return def;
+    static const std::string undef( "???" );
 
-    return m[l];
+    if( it == m.end() )
+        return undef;
+
+    return it->second;
 }
 
 

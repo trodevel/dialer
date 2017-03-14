@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 6010 $ $Date:: 2017-03-14 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -58,6 +58,7 @@ public:
         WAIT_PLAY_START,
         CANCELED_IN_WPS,
         PLAYING,
+        PLAYING_ALREADY_STOPPED,
         CANCELED_IN_P
     };
 
@@ -72,26 +73,29 @@ public:
     bool is_inited() const;
 
     // IPlayerSM
-    void play_file( uint32_t job_id, uint32_t call_id, const std::string & filename );
-    void stop( uint32_t job_id, uint32_t call_id );
+    void play_file( uint32_t req_id, uint32_t call_id, const std::string & filename );
+    void stop( uint32_t req_id, uint32_t call_id );
     void on_loss();
 
     // ISimpleVoipCallback
-    void on_play_file_response( uint32_t job_id );
-    void on_error_response( uint32_t job_id );
+    void on_play_file_response( uint32_t req_id );
+    void on_error_response( uint32_t req_id );
     void on_play_start( uint32_t call_id );
     void on_play_stop( uint32_t call_id );
 
     // called by timer
-    void on_play_failed( uint32_t job_id );
+    void on_play_failed( uint32_t req_id );
 
 private:
+
+    void next_state( state_e state );
+    void trace_state_switch() const;
 
 private:
     mutable std::mutex          mutex_;
 
     state_e                     state_;
-    uint32_t                    job_id_;
+    uint32_t                    req_id_;
 
     skype_service::SkypeService * sio_;
     sched::IScheduler           * sched_;

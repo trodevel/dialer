@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5739 $ $Date:: 2017-02-09 #$ $Author: serge $
+// $Revision: 6014 $ $Date:: 2017-03-14 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -139,6 +139,14 @@ public:
                     << " req_id " << dynamic_cast< const simple_voip::PlayFileResponse *>( req )->req_id
                     << std::endl;
         }
+        else if( typeid( *req ) == typeid( simple_voip::PlayFileStopResponse ) )
+        {
+            auto m = dynamic_cast< const simple_voip::PlayFileStopResponse *>( req );
+
+            std::cout << "got PlayFileStopResponse"
+                    << " req_id " << m->req_id
+                    << std::endl;
+        }
         else if( typeid( *req ) == typeid( simple_voip::RecordFileResponse ) )
         {
             std::cout << "got RecordFileResponse"
@@ -159,6 +167,7 @@ public:
         std::cout << "call <party>" << std::endl;
         std::cout << "drop" << std::endl;
         std::cout << "play <file>" << std::endl;
+        std::cout << "stop" << std::endl;
         std::cout << "rec <file>" << std::endl;
 
         std::string input;
