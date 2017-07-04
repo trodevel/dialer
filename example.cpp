@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 6031 $ $Date:: 2017-03-15 #$ $Author: serge $
+// $Revision: 7073 $ $Date:: 2017-07-04 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -35,15 +35,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../scheduler/scheduler.h"     // Scheduler
 
 
-namespace sched
-{
-extern unsigned int MODULE_ID;
-}
-
 class Callback: virtual public simple_voip::ISimpleVoipCallback
 {
 public:
-    Callback( simple_voip::ISimpleVoip * dialer, sched::Scheduler * sched ):
+    Callback( simple_voip::ISimpleVoip * dialer, scheduler::Scheduler * sched ):
         dialer_( dialer ),
         sched_( sched ),
         call_id_( 0 ),
@@ -250,7 +245,7 @@ private:
 
 private:
     simple_voip::ISimpleVoip    * dialer_;
-    sched::Scheduler            * sched_;
+    scheduler::Scheduler        * sched_;
 
     std::atomic<int>            call_id_;
 
@@ -258,24 +253,16 @@ private:
 
 };
 
-void scheduler_thread( sched::Scheduler * sched )
-{
-    sched->start( true );
-}
-
 int main()
 {
     dummy_logger::set_log_level( log_levels_log4j::DEBUG );
 
     skype_service::SkypeService sio;
     dialer::Dialer              dialer;
-    sched::Scheduler            sched;
+    scheduler::Scheduler        sched( scheduler::Duration( std::chrono::milliseconds( 1 ) ) );
 
-    sched::MODULE_ID        = dummy_logger::register_module( "Scheduler" );
-    dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
-
-    sched.load_config();
-    sched.init();
+    //sched::MODULE_ID        = dummy_logger::register_module( "Scheduler" );
+    //dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
 
     {
         bool b = dialer.init( & sio, & sched );
@@ -306,7 +293,8 @@ int main()
     std::vector< std::thread > tg;
 
     tg.push_back( std::thread( std::bind( &Callback::control_thread, &test ) ) );
-    tg.push_back( std::thread( std::bind( &scheduler_thread, &sched ) ) );
+
+    sched.run();
 
     for( auto & t : tg )
         t.join();

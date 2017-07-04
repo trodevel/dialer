@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7070 $ $Date:: 2017-07-03 #$ $Author: serge $
+// $Revision: 7072 $ $Date:: 2017-07-04 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -29,6 +29,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <mutex>                    // std::mutex
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
+
+#include "../scheduler/job_id_t.h"  // job_id_t
 
 namespace scheduler
 {
