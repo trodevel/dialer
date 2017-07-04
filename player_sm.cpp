@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 6012 $ $Date:: 2017-03-14 #$ $Author: serge $
+// $Revision: 7070 $ $Date:: 2017-07-03 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -34,31 +34,31 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
 
-#include "../scheduler/i_scheduler.h"   // IScheduler
-#include "../scheduler/timeout_job.h"   // new_timeout_job
+#include "../scheduler/i_scheduler.h"       // IScheduler
+#include "../scheduler/timeout_job_aux.h"   // create_timeout_job
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
 #define MODULENAME      "PlayerSM"
 
-#define PLAY_TIMEOUT    ( 2 * sched::Time::MICROS_PER_SECOND )
+#define PLAY_TIMEOUT    ( 2 )
 
 NAMESPACE_DIALER_START
 
 PlayerSM::PlayerSM():
-    state_( IDLE ), req_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_( 0L )
+    state_( IDLE ), req_id_( 0 ), sio_( 0L ), sched_( 0L ), callback_( nullptr ), job_id_( 0 )
 {
 }
 
 PlayerSM::~PlayerSM()
 {
-    if( job_ )
-    {
-        delete job_;
-    }
+//    if( job_id_ )
+//    {
+//        delete job_id_;
+//    }
 }
 
-bool PlayerSM::init( skype_service::SkypeService * sw, sched::IScheduler * sched )
+bool PlayerSM::init( skype_service::SkypeService * sw, scheduler::IScheduler * sched )
 {
     if( !sw || !sched )
         return false;
@@ -148,10 +148,11 @@ void PlayerSM::stop( uint32_t req_id, uint32_t call_id )
 
     case WAIT_PLAY_START:
     {
-        if( job_ )
+        if( job_id_ )
         {
-            job_->cancel();
-            job_    = nullptr;
+            std::string error_msg;
+            sched_->delete_job( & error_msg, job_id_ );     // cancel timeout job as replay was successfully started
+            job_id_     = 0;
         }
 
         dummy_log_debug( MODULENAME, "stop: ok" );
@@ -218,10 +219,11 @@ void PlayerSM::on_loss()
 
     if( state_ == WAIT_PLAY_START )
     {
-        if( job_ )
+        if( job_id_ )
         {
-            job_->cancel();
-            job_    = nullptr;
+            std::string error_msg;
+            sched_->delete_job( & error_msg, job_id_ );     // cancel timeout job as replay was successfully started
+            job_id_     = 0;
         }
     }
 
@@ -248,12 +250,15 @@ void PlayerSM::on_play_file_response( uint32_t req_id )
 
     dummy_log_debug( MODULENAME, "on_play_file_response: ok" );
 
-    if( job_ )
+    if( job_id_ )
     {
-        delete job_;
-        job_    = nullptr;
+        std::string error_msg;
+        sched_->delete_job( & error_msg, job_id_ );     // cancel timeout job as replay was successfully started
+        job_id_     = 0;
     }
-    job_    = sched::new_timeout_job( sched_, PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, req_id ) );
+
+    std::string err_msg;
+    scheduler::create_and_insert_timeout_job( & job_id_, & err_msg, * sched_, "timeout", PLAY_TIMEOUT, std::bind( &PlayerSM::on_play_failed, this, req_id ) );
 
     req_id_ = req_id;
     next_state( WAIT_PLAY_START );
@@ -290,8 +295,9 @@ void PlayerSM::on_play_start( uint32_t call_id )
 
     callback_->consume( simple_voip::create_play_file_response( req_id_ ) );
 
-    job_->cancel();     // cancel timeout job as replay was successfully started
-    job_    = nullptr;
+    std::string error_msg;
+    sched_->delete_job( & error_msg, job_id_ );     // cancel timeout job as replay was successfully started
+    job_id_     = 0;
     req_id_ = 0;
     next_state( PLAYING );
 }
@@ -348,7 +354,7 @@ void PlayerSM::on_play_failed( uint32_t req_id )
 
     callback_->consume( simple_voip::create_error_response( req_id_, 0, "play failed" ) );
 
-    job_    = nullptr;       // job_ is not valid after call of invoke()
+    job_id_     = 0;       // job_id_ is not valid after call of invoke()
     req_id_ = 0;
     next_state( IDLE );
 }

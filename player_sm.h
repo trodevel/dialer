@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 6010 $ $Date:: 2017-03-14 #$ $Author: serge $
+// $Revision: 7070 $ $Date:: 2017-07-03 #$ $Author: serge $
 
 #ifndef PLAYER_SM_H
 #define PLAYER_SM_H
@@ -30,7 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>                    // std::mutex
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
-namespace sched
+namespace scheduler
 {
 class IScheduler;
 class IOneTimeJob;
@@ -66,7 +66,7 @@ public:
     PlayerSM();
     ~PlayerSM();
 
-    bool init( skype_service::SkypeService * sw, sched::IScheduler * sched );
+    bool init( skype_service::SkypeService * sw, scheduler::IScheduler * scheduler );
 
     bool register_callback( simple_voip::ISimpleVoipCallback  * callback );
 
@@ -98,11 +98,11 @@ private:
     uint32_t                    req_id_;
 
     skype_service::SkypeService * sio_;
-    sched::IScheduler           * sched_;
+    scheduler::IScheduler       * sched_;
     simple_voip::ISimpleVoipCallback  * callback_;
 
-    //std::shared_ptr<sched::IOneTimeJob>     job_;
-    sched::IOneTimeJob             * job_;
+    //std::shared_ptr<scheduler::IOneTimeJob>     job_id_;
+    scheduler::job_id_t         job_id_;
 };
 
 NAMESPACE_DIALER_END

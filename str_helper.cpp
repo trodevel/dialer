@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 6016 $ $Date:: 2017-03-14 #$ $Author: serge $
+// $Revision: 6031 $ $Date:: 2017-03-15 #$ $Author: serge $
 
 #include "str_helper.h"             // self
 

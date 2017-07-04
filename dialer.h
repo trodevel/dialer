@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5572 $ $Date:: 2017-01-17 #$ $Author: serge $
+// $Revision: 7071 $ $Date:: 2017-07-03 #$ $Author: serge $
 
 #ifndef DIALER_H
 #define DIALER_H
@@ -42,7 +42,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "namespace_lib.h"          // NAMESPACE_DIALER_START
 
-namespace sched
+namespace scheduler
 {
 class IScheduler;
 }
@@ -83,7 +83,7 @@ public:
 
     bool init(
             skype_service::SkypeService * sw,
-            sched::IScheduler           * sched,
+            scheduler::IScheduler       * sched,
             uint16_t                    data_port = 0 );
 
     bool register_callback( simple_voip::ISimpleVoipCallback * callback );
@@ -180,7 +180,7 @@ private:
     state_e                     state_;
 
     skype_service::SkypeService * sio_;
-    sched::IScheduler           * sched_;
+    scheduler::IScheduler       * sched_;
     simple_voip::ISimpleVoipCallback  * callback_;
     uint16_t                    data_port_;
 

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 5792 $ $Date:: 2017-02-20 #$ $Author: serge $
+// $Revision: 7071 $ $Date:: 2017-07-03 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -77,7 +77,7 @@ Dialer::~Dialer()
 
 bool Dialer::init(
         skype_service::SkypeService * sw,
-        sched::IScheduler           * sched,
+        scheduler::IScheduler       * sched,
         uint16_t                    data_port )
 {
 	MUTEX_SCOPE_LOCK( mutex_ );
