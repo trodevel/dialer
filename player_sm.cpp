@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7070 $ $Date:: 2017-07-03 #$ $Author: serge $
+// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 

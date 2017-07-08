@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7073 $ $Date:: 2017-07-04 #$ $Author: serge $
+// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -260,9 +260,6 @@ int main()
     skype_service::SkypeService sio;
     dialer::Dialer              dialer;
     scheduler::Scheduler        sched( scheduler::Duration( std::chrono::milliseconds( 1 ) ) );
-
-    //sched::MODULE_ID        = dummy_logger::register_module( "Scheduler" );
-    //dummy_logger::set_log_level( sched::MODULE_ID, log_levels_log4j::ERROR );
 
     {
         bool b = dialer.init( & sio, & sched );

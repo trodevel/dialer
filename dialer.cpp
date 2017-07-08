@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7071 $ $Date:: 2017-07-03 #$ $Author: serge $
+// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
