@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
+// $Revision: 10621 $ $Date:: 2019-03-10 #$ $Author: serge $
 
 #include "dialer.h"                     // self
 
@@ -28,7 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_service/str_helper.h"        // skype_service::to_string
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
-#include "../utils/assert.h"            // ASSERT
+#include "../utils/utils_assert.h"            // ASSERT
 
 #include "str_helper.h"                 // StrHelper
 #include "regex_match.h"                // regex_match

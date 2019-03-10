@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
+// $Revision: 10621 $ $Date:: 2019-03-10 #$ $Author: serge $
 
 #include "player_sm.h"              // self
 
@@ -31,7 +31,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../simple_voip/object_factory.h"  // simple_voip::create_play_file
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
-#include "../utils/assert.h"            // ASSERT
+#include "../utils/utils_assert.h"            // ASSERT
 #include "str_helper.h"                 // StrHelper
 
 #include "../scheduler/i_scheduler.h"       // IScheduler
