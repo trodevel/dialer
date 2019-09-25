@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 7092 $ $Date:: 2017-07-06 #$ $Author: serge $
+// $Revision: 12038 $ $Date:: 2019-09-25 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -255,7 +255,7 @@ private:
 
 int main()
 {
-    dummy_logger::set_log_level( log_levels_log4j::DEBUG );
+    dummy_logger::set_log_level( log_levels_log4j::Debug );
 
     skype_service::SkypeService sio;
     dialer::Dialer              dialer;
